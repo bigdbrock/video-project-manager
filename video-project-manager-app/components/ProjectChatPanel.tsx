@@ -15,6 +15,7 @@ type ChatPanelProps = {
   projectId: string;
   initialMessages: ChatMessage[];
   onSend: (formData: FormData) => Promise<void>;
+  currentUserId?: string | null;
 };
 
 function formatTime(value: string) {
@@ -27,7 +28,7 @@ function getLastSeenKey(projectId: string) {
   return `vpm:lastSeen:${projectId}`;
 }
 
-export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPanelProps) {
+export function ProjectChatPanel({ projectId, initialMessages, onSend, currentUserId }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [error, setError] = useState<string | null>(null);
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
@@ -149,7 +150,11 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPan
           messages.map((message) => (
             <div key={message.id} className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
               <div className="flex items-center justify-between text-xs text-ink-300">
-                <span>{message.sender_name ?? message.sender_id ?? "Unknown"}</span>
+                <span>
+                  {currentUserId && message.sender_id === currentUserId
+                    ? "You"
+                    : message.sender_name ?? message.sender_id ?? "Unknown"}
+                </span>
                 <span>{formatTime(message.created_at)}</span>
               </div>
               <p className="mt-2 text-sm text-ink-700">{message.message}</p>

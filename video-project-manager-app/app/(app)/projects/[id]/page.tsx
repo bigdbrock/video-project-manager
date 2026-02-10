@@ -1,4 +1,4 @@
-ï»¿import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { StatusPill } from "@/components/StatusPill";
 import { ProjectChatPanel } from "@/components/ProjectChatPanel";
 import type { ChatMessage } from "@/components/ProjectChatPanel";
@@ -305,6 +305,36 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function deleteProject() {
+    "use server";
+
+    try {
+      const supabaseAction = await createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const { data: actionProfile } = await supabaseAction
+        .from("profiles")
+        .select("role")
+        .eq("id", actionUser.id)
+        .maybeSingle();
+
+      if (actionProfile?.role !== "admin") {
+        return;
+      }
+
+      await supabaseAction.from("projects").delete().eq("id", projectId);
+      redirect("/projects");
+    } catch (error) {
+      return;
+    }
+  }
+
   const data = result.data ?? fallback;
 
   return (
@@ -317,7 +347,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {data.project.title}
             </h2>
             <p className="mt-2 text-sm text-ink-500">
-              Due {formatDueDate(data.project.due_at)} Â· Assigned {data.project.assigned_editor_id ?? "Unassigned"}
+              Due {formatDueDate(data.project.due_at)} · Assigned {data.project.assigned_editor_id ?? "Unassigned"}
             </p>
           </div>
           <StatusPill status={data.project.status} />
@@ -341,7 +371,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <li key={item.id}>
                     {item.label}
                     {item.specs ? ` (${item.specs})` : ""}
-                    {item.completed ? " Â· Complete" : ""}
+                    {item.completed ? " · Complete" : ""}
                   </li>
                 ))
               ) : (
@@ -413,6 +443,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 Assign
               </button>
             </form>
+            {role === "admin" ? (
+              <form action={deleteProject} className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                <span>Delete this project permanently.</span>
+                <button type="submit" className="rounded-full bg-rose-600 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                  Delete
+                </button>
+              </form>
+            ) : null}
           </div>
         ) : null}
 
@@ -455,7 +493,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         ) : null}
       </section>
 
-      <ProjectChatPanel projectId={data.project.id} initialMessages={data.messages} onSend={sendMessage} />
+      <ProjectChatPanel
+        projectId={data.project.id}
+        initialMessages={data.messages}
+        onSend={sendMessage}
+        currentUserId={user?.id ?? null}
+      />
     </div>
   );
 }
+

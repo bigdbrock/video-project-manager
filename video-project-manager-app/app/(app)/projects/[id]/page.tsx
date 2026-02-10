@@ -250,7 +250,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
-  async function updateProjectDetails(prevState: { status: string; message?: string }, formData: FormData) {
+  async function updateProjectDetails(
+    prevState: { status: "idle" | "saving" | "success" | "error"; message?: string },
+    formData: FormData
+  ) {
     "use server";
 
     try {
@@ -260,7 +263,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       } = await supabaseAction.auth.getUser();
 
       if (!actionUser) {
-        return;
+        return { status: "error", message: "Not signed in" };
       }
 
       const { data: actionProfile } = await supabaseAction

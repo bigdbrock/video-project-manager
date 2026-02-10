@@ -1,10 +1,10 @@
-﻿import { revalidatePath } from "next/cache";
-import { notFound, redirect } from "next/navigation";
+﻿import { notFound, redirect } from "next/navigation";
 import { StatusPill } from "@/components/StatusPill";
 import { ProjectChatPanel } from "@/components/ProjectChatPanel";
 import type { ChatMessage } from "@/components/ProjectChatPanel";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/domain";
+
 const fallback = {
   project: {
     id: "fallback",
@@ -62,6 +62,7 @@ const fallback = {
     { id: "editor-2", full_name: "Editor Two" },
   ],
 };
+
 type ProjectRow = {
   id: string;
   title: string;
@@ -78,38 +79,45 @@ type ProjectRow = {
   final_delivery_url: string | null;
   created_by: string | null;
 };
+
 type DeliverableRow = {
   id: string;
   label: string;
   specs: string | null;
   completed: boolean;
 };
+
 type RevisionRow = {
   id: string;
   created_at: string;
   reason_tags: string[];
   notes: string | null;
 };
+
 type ActivityRow = {
   id: string;
   created_at: string;
   action: string;
 };
+
 type EditorRow = {
   id: string;
   full_name: string | null;
 };
+
 function formatDueDate(value: string | null) {
   if (!value) return "No due date";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
+
 async function getProjectData(id: string) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -120,12 +128,15 @@ async function getProjectData(id: string) {
       )
       .eq("id", id)
       .maybeSingle();
+
     if (error) {
       return { data: null, error: error.message };
     }
+
     if (!project) {
       return { data: null, error: "not_found" };
     }
+
     const [{ data: deliverables }, { data: messages }, { data: revisions }, { data: activity }, { data: editors }] =
       await Promise.all([
         supabase
@@ -151,6 +162,7 @@ async function getProjectData(id: string) {
           .order("created_at", { ascending: false }),
         supabase.from("profiles").select("id,full_name").eq("role", "editor").order("full_name"),
       ]);
+
     const normalizedMessages = (messages ?? []).map((item: any) => ({
       id: item.id,
       sender_id: item.sender_id,
@@ -158,6 +170,7 @@ async function getProjectData(id: string) {
       created_at: item.created_at,
       message: item.message,
     })) as ChatMessage[];
+
     return {
       data: {
         project: project as ProjectRow,
@@ -173,6 +186,7 @@ async function getProjectData(id: string) {
     return { data: null, error: "Supabase not configured" };
   }
 }
+
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await params;
   const supabase = await createServerSupabaseClient();
@@ -183,28 +197,37 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     ? await supabase.from("profiles").select("full_name,role").eq("id", user.id).maybeSingle()
     : { data: null };
   const role = (profile?.role ?? "editor") as UserRole;
+
   const result = await getProjectData(projectId);
+
   if (result.error === "not_found") {
     notFound();
   }
+
   async function assignProject(formData: FormData) {
     "use server";
+
     const editorId = String(formData.get("assigned_editor_id") || "").trim();
     const dueAt = String(formData.get("due_at") || "").trim();
+
     try {
       const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
+
       if (!actionUser) {
         return;
       }
+
       const { data: current } = await supabaseAction
         .from("projects")
         .select("status")
         .eq("id", projectId)
         .maybeSingle();
+
       const nextStatus = current?.status === "NEW" ? "ASSIGNED" : current?.status;
+
       await supabaseAction
         .from("projects")
         .update({
@@ -213,6 +236,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           status: nextStatus,
         })
         .eq("id", projectId);
+
       await supabaseAction.from("activity_log").insert({
         project_id: projectId,
         actor_id: actionUser.id,
@@ -223,21 +247,26 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       return;
     }
   }
+
   async function updateProjectDetails(formData: FormData) {
     "use server";
+
     try {
       const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
+
       if (!actionUser) {
         return;
       }
+
       const { data: actionProfile } = await supabaseAction
         .from("profiles")
         .select("role")
         .eq("id", actionUser.id)
         .maybeSingle();
+
       const { data: project } = await supabaseAction
         .from("projects")
         .select(
@@ -245,13 +274,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         )
         .eq("id", projectId)
         .maybeSingle();
+
       if (!project) {
         return;
       }
+
       const canEdit = actionProfile?.role === "admin" || project.created_by === actionUser.id;
       if (!canEdit) {
         return;
       }
+
       const title = String(formData.get("title") || "").trim();
       const address = String(formData.get("address") || "").trim();
       const type = String(formData.get("type") || "").trim();
@@ -261,6 +293,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       const musicAssetsUrl = String(formData.get("music_assets_url") || "").trim();
       const previewUrl = String(formData.get("preview_url") || "").trim();
       const finalDeliveryUrl = String(formData.get("final_delivery_url") || "").trim();
+
       await supabaseAction
         .from("projects")
         .update({
@@ -275,60 +308,72 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           final_delivery_url: finalDeliveryUrl || null,
         })
         .eq("id", projectId);
+
       await supabaseAction.from("activity_log").insert({
         project_id: projectId,
         actor_id: actionUser.id,
         action: "PROJECT_UPDATED",
       });
-      revalidatePath(`/projects/${projectId}`);
-      revalidatePath("/projects");
     } catch (error) {
       return;
     }
   }
+
   async function updateEditorWork(formData: FormData) {
     "use server";
+
     const status = String(formData.get("status") || "").trim();
     const previewUrl = String(formData.get("preview_url") || "").trim();
     const finalUrl = String(formData.get("final_delivery_url") || "").trim();
+
     try {
       const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
+
       if (!actionUser) {
         return;
       }
+
       const update: Record<string, string | null> = {
         preview_url: previewUrl || null,
         final_delivery_url: finalUrl || null,
       };
+
       if (status) {
         update.status = status;
       }
+
       await supabaseAction.from("projects").update(update).eq("id", projectId);
     } catch (error) {
       return;
     }
   }
+
   async function sendMessage(formData: FormData) {
     "use server";
+
     const message = String(formData.get("message") || "").trim();
     if (!message) return;
+
     try {
       const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
+
       if (!actionUser) {
         return;
       }
+
       await supabaseAction.from("project_messages").insert({
         project_id: projectId,
         sender_id: actionUser.id,
         message,
         message_type: "user",
       });
+
       await supabaseAction.from("activity_log").insert({
         project_id: projectId,
         actor_id: actionUser.id,
@@ -338,32 +383,40 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       return;
     }
   }
+
   async function deleteProject() {
     "use server";
+
     try {
       const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
+
       if (!actionUser) {
         return;
       }
+
       const { data: actionProfile } = await supabaseAction
         .from("profiles")
         .select("role")
         .eq("id", actionUser.id)
         .maybeSingle();
+
       if (actionProfile?.role !== "admin") {
         return;
       }
+
       await supabaseAction.from("projects").delete().eq("id", projectId);
       redirect("/projects");
     } catch (error) {
       return;
     }
   }
+
   const data = result.data ?? fallback;
   const canEditProject = role === "admin" || (data.project.created_by && data.project.created_by === user?.id);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <section className="glass-panel rounded-xl p-6 shadow-card">
@@ -407,6 +460,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </ul>
           </div>
         </div>
+
         {canEditProject ? (
           <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -464,6 +518,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </form>
           </div>
         ) : null}
+
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Revision history</p>
@@ -497,6 +552,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
         </div>
+
         {role !== "editor" ? (
           <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Assignment</p>
@@ -535,6 +591,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             ) : null}
           </div>
         ) : null}
+
         {role === "editor" ? (
           <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Editor updates</p>
@@ -573,6 +630,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         ) : null}
       </section>
+
       <ProjectChatPanel
         projectId={data.project.id}
         initialMessages={data.messages}
@@ -582,3 +640,5 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     </div>
   );
 }
+
+

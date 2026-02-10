@@ -9,7 +9,7 @@ Standalone MVP for tracking video projects end-to-end with per-project chat. Bui
 ## Setup
 1. Install dependencies
    ```bash
-   pnpm install
+   npm install
    ```
 2. Create `.env.local` from the template
    ```bash
@@ -17,7 +17,7 @@ Standalone MVP for tracking video projects end-to-end with per-project chat. Bui
    ```
 3. Start the dev server
    ```bash
-   pnpm dev
+   npm run dev
    ```
 
 ## Environment Variables

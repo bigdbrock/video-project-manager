@@ -6,10 +6,9 @@
 3. Set Environment Variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Set Install Command to `pnpm install --no-frozen-lockfile`
-5. Set Build Command to `pnpm build`
+4. Set Install Command to `npm install --no-fund --no-audit`
+5. Set Build Command to `npm run build`
 6. Deploy.
 
 ## Notes
-- This repo uses pnpm for faster installs on Vercel.
 - After deployment, log in using Supabase Auth credentials.

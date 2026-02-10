@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type ChatMessage = {
@@ -22,9 +22,21 @@ function formatTime(value: string) {
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+function getLastSeenKey(projectId: string) {
+  return `vpm:lastSeen:${projectId}`;
+}
+
 export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [error, setError] = useState<string | null>(null);
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+    const stored = sessionStorage.getItem(getLastSeenKey(projectId));
+    setLastSeenAt(stored);
+  }, [projectId, initialMessages]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -63,19 +75,61 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPan
   }, [projectId]);
 
   const lastMessage = useMemo(() => messages[messages.length - 1], [messages]);
+  const unreadCount = useMemo(() => {
+    if (!lastSeenAt) return 0;
+    const lastSeenTime = new Date(lastSeenAt).getTime();
+    return messages.filter((message) => new Date(message.created_at).getTime() > lastSeenTime).length;
+  }, [messages, lastSeenAt]);
+
+  const handleJumpToLatest = () => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+    if (lastMessage) {
+      sessionStorage.setItem(getLastSeenKey(projectId), lastMessage.created_at);
+      setLastSeenAt(lastMessage.created_at);
+    }
+  };
+
+  const handleMarkRead = () => {
+    if (lastMessage) {
+      sessionStorage.setItem(getLastSeenKey(projectId), lastMessage.created_at);
+      setLastSeenAt(lastMessage.created_at);
+    }
+  };
 
   return (
     <section className="glass-panel rounded-xl p-6 shadow-card">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Project chat</p>
           <h3 className="mt-2 text-lg font-semibold text-ink-900" style={{ fontFamily: "var(--font-space-grotesk)" }}>
             In-context updates
           </h3>
         </div>
-        <span className="text-xs text-ink-300">
-          {lastMessage ? `Last update ${formatTime(lastMessage.created_at)}` : "No messages yet"}
-        </span>
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={handleJumpToLatest}
+              className="rounded-full border border-ink-900/10 bg-white/80 px-3 py-1 text-xs text-ink-700"
+            >
+              Jump to latest ({unreadCount})
+            </button>
+          ) : null}
+          {lastMessage ? (
+            <button
+              type="button"
+              onClick={handleMarkRead}
+              className="text-xs text-ink-300 transition hover:text-ink-700"
+            >
+              Mark read
+            </button>
+          ) : null}
+          <span className="text-xs text-ink-300">
+            {lastMessage ? `Last update ${formatTime(lastMessage.created_at)}` : "No messages yet"}
+          </span>
+        </div>
       </div>
       {error ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
@@ -98,6 +152,7 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPan
             No messages yet.
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
       <div className="mt-6 flex flex-col gap-3">
         <form action={onSend} className="flex flex-col gap-3">

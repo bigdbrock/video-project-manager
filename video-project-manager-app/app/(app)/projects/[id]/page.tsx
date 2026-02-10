@@ -347,7 +347,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {data.project.title}
             </h2>
             <p className="mt-2 text-sm text-ink-500">
-              Due {formatDueDate(data.project.due_at)} · Assigned {data.project.assigned_editor_id ?? "Unassigned"}
+              Due {formatDueDate(data.project.due_at)} Â· Assigned {data.project.assigned_editor_id ?? "Unassigned"}
             </p>
           </div>
           <StatusPill status={data.project.status} />
@@ -371,7 +371,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <li key={item.id}>
                     {item.label}
                     {item.specs ? ` (${item.specs})` : ""}
-                    {item.completed ? " · Complete" : ""}
+                    {item.completed ? " Â· Complete" : ""}
                   </li>
                 ))
               ) : (

@@ -1,6 +1,7 @@
 ﻿import { notFound } from "next/navigation";
 import { StatusPill } from "@/components/StatusPill";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { UserRole } from "@/types/domain";
 
 const fallback = {
   project: {
@@ -12,16 +13,29 @@ const fallback = {
     raw_footage_url: "drive.google.com/acme/12-oak/raw",
     brand_assets_url: "drive.google.com/acme/brand",
     music_assets_url: "drive.google.com/acme/music",
+    preview_url: "",
+    final_delivery_url: "",
   },
   deliverables: [
-    { id: "d1", label: "Main video", specs: "1080p, 30fps" },
-    { id: "d2", label: "Vertical cut", specs: "1080x1920" },
-    { id: "d3", label: "Social teaser", specs: "15s" },
+    { id: "d1", label: "Main video", specs: "1080p, 30fps", completed: false },
+    { id: "d2", label: "Vertical cut", specs: "1080x1920", completed: false },
+    { id: "d3", label: "Social teaser", specs: "15s", completed: true },
   ],
   messages: [
     { id: "m1", sender_id: "QC", created_at: "2026-02-10T10:12:00Z", message: "Please prioritize the kitchen walkthrough segment." },
     { id: "m2", sender_id: "Editor", created_at: "2026-02-10T10:25:00Z", message: "Got it. I will update and resubmit by tomorrow." },
     { id: "m3", sender_id: "QC", created_at: "2026-02-10T11:02:00Z", message: "Also tighten the drone opener to 6 seconds." },
+  ],
+  revisions: [
+    { id: "r1", created_at: "2026-02-10T09:30:00Z", reason_tags: ["Color", "Stabilization"], notes: "Soften highlights." },
+  ],
+  activity: [
+    { id: "a1", created_at: "2026-02-10T08:20:00Z", action: "PROJECT_CREATED" },
+    { id: "a2", created_at: "2026-02-10T09:30:00Z", action: "REVISION_REQUESTED" },
+  ],
+  editors: [
+    { id: "editor-1", full_name: "Editor One" },
+    { id: "editor-2", full_name: "Editor Two" },
   ],
 };
 
@@ -52,6 +66,24 @@ type MessageRow = {
   message: string;
 };
 
+type RevisionRow = {
+  id: string;
+  created_at: string;
+  reason_tags: string[];
+  notes: string | null;
+};
+
+type ActivityRow = {
+  id: string;
+  created_at: string;
+  action: string;
+};
+
+type EditorRow = {
+  id: string;
+  full_name: string | null;
+};
+
 function formatDueDate(value: string | null) {
   if (!value) return "No due date";
   const date = new Date(value);
@@ -63,6 +95,12 @@ function formatTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 async function getProjectData(id: string) {
@@ -84,25 +122,40 @@ async function getProjectData(id: string) {
       return { data: null, error: "not_found" };
     }
 
-    const [{ data: deliverables }, { data: messages }] = await Promise.all([
-      supabase
-        .from("deliverables")
-        .select("id,label,specs,completed")
-        .eq("project_id", id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("project_messages")
-        .select("id,sender_id,created_at,message")
-        .eq("project_id", id)
-        .order("created_at", { ascending: true })
-        .limit(50),
-    ]);
+    const [{ data: deliverables }, { data: messages }, { data: revisions }, { data: activity }, { data: editors }] =
+      await Promise.all([
+        supabase
+          .from("deliverables")
+          .select("id,label,specs,completed")
+          .eq("project_id", id)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("project_messages")
+          .select("id,sender_id,created_at,message")
+          .eq("project_id", id)
+          .order("created_at", { ascending: true })
+          .limit(50),
+        supabase
+          .from("revisions")
+          .select("id,created_at,reason_tags,notes")
+          .eq("project_id", id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("activity_log")
+          .select("id,created_at,action")
+          .eq("project_id", id)
+          .order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id,full_name").eq("role", "editor").order("full_name"),
+      ]);
 
     return {
       data: {
         project: project as ProjectRow,
         deliverables: (deliverables ?? []) as DeliverableRow[],
         messages: (messages ?? []) as MessageRow[],
+        revisions: (revisions ?? []) as RevisionRow[],
+        activity: (activity ?? []) as ActivityRow[],
+        editors: (editors ?? []) as EditorRow[],
       },
       error: null,
     };
@@ -112,10 +165,95 @@ async function getProjectData(id: string) {
 }
 
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
+  const supabase = createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("full_name,role").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const role = (profile?.role ?? "editor") as UserRole;
+
   const result = await getProjectData(params.id);
 
   if (result.error === "not_found") {
     notFound();
+  }
+
+  async function assignProject(formData: FormData) {
+    "use server";
+
+    const editorId = String(formData.get("assigned_editor_id") || "").trim();
+    const dueAt = String(formData.get("due_at") || "").trim();
+
+    try {
+      const supabaseAction = createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const { data: current } = await supabaseAction
+        .from("projects")
+        .select("status")
+        .eq("id", params.id)
+        .maybeSingle();
+
+      const nextStatus = current?.status === "NEW" ? "ASSIGNED" : current?.status;
+
+      await supabaseAction
+        .from("projects")
+        .update({
+          assigned_editor_id: editorId || null,
+          due_at: dueAt || null,
+          status: nextStatus,
+        })
+        .eq("id", params.id);
+
+      await supabaseAction.from("activity_log").insert({
+        project_id: params.id,
+        actor_id: actionUser.id,
+        action: "PROJECT_ASSIGNED",
+        meta: { assigned_editor_id: editorId || null, due_at: dueAt || null },
+      });
+    } catch (error) {
+      return;
+    }
+  }
+
+  async function updateEditorWork(formData: FormData) {
+    "use server";
+
+    const status = String(formData.get("status") || "").trim();
+    const previewUrl = String(formData.get("preview_url") || "").trim();
+    const finalUrl = String(formData.get("final_delivery_url") || "").trim();
+
+    try {
+      const supabaseAction = createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const update: Record<string, string | null> = {
+        preview_url: previewUrl || null,
+        final_delivery_url: finalUrl || null,
+      };
+
+      if (status) {
+        update.status = status;
+      }
+
+      await supabaseAction.from("projects").update(update).eq("id", params.id);
+    } catch (error) {
+      return;
+    }
   }
 
   const data = result.data ?? fallback;
@@ -164,6 +302,109 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             </ul>
           </div>
         </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Revision history</p>
+            <div className="mt-3 space-y-3 text-sm text-ink-700">
+              {data.revisions.length ? (
+                data.revisions.map((revision) => (
+                  <div key={revision.id} className="rounded-lg border border-ink-900/5 bg-white/80 p-3">
+                    <p className="text-xs text-ink-300">{formatDateTime(revision.created_at)}</p>
+                    <p className="mt-1 font-semibold">{revision.reason_tags?.join(", ") || "Revision"}</p>
+                    {revision.notes ? <p className="mt-1 text-xs text-ink-500">{revision.notes}</p> : null}
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-ink-500">No revisions logged yet.</p>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Activity log</p>
+            <div className="mt-3 space-y-3 text-sm text-ink-700">
+              {data.activity.length ? (
+                data.activity.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between text-xs text-ink-500">
+                    <span>{item.action}</span>
+                    <span>{formatDateTime(item.created_at)}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-ink-500">No activity yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {role !== "editor" ? (
+          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Assignment</p>
+            <form action={assignProject} className="mt-3 grid gap-3 text-sm text-ink-700 md:grid-cols-[1fr_1fr_auto]">
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Assigned editor
+                <select name="assigned_editor_id" defaultValue={data.project.assigned_editor_id ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2">
+                  <option value="">Unassigned</option>
+                  {data.editors.map((editor) => (
+                    <option key={editor.id} value={editor.id}>
+                      {editor.full_name ?? "Editor"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Due date
+                <input
+                  name="due_at"
+                  type="date"
+                  defaultValue={data.project.due_at ? data.project.due_at.slice(0, 10) : ""}
+                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                />
+              </label>
+              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                Assign
+              </button>
+            </form>
+          </div>
+        ) : null}
+
+        {role === "editor" ? (
+          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Editor updates</p>
+            <form action={updateEditorWork} className="mt-3 grid gap-3 text-sm text-ink-700">
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Status
+                <select name="status" defaultValue={data.project.status} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2">
+                  <option value="ASSIGNED">ASSIGNED</option>
+                  <option value="EDITING">EDITING</option>
+                  <option value="QC">QC</option>
+                  <option value="REVISION_REQUESTED">REVISION_REQUESTED</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Preview URL
+                <input
+                  name="preview_url"
+                  defaultValue={data.project.preview_url ?? ""}
+                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                  placeholder="https://frame.io/..."
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Final delivery URL
+                <input
+                  name="final_delivery_url"
+                  defaultValue={data.project.final_delivery_url ?? ""}
+                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                  placeholder="https://frame.io/..."
+                />
+              </label>
+              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                Update
+              </button>
+            </form>
+          </div>
+        ) : null}
       </section>
 
       <section className="glass-panel rounded-xl p-6 shadow-card">

@@ -1,5 +1,4 @@
-﻿import { StatusPill } from "@/components/StatusPill";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+﻿import Link from "next/link";\r\nimport { StatusPill } from "@/components/StatusPill";\r\nimport { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const fallbackQueue = [
   { id: "1", title: "Acme - 12 Oak St", status: "EDITING", due: "Feb 12", priority: "Normal" },
@@ -53,6 +52,30 @@ export default async function MyQueuePage() {
   const result = await getQueue();
   const queue = result.data ?? fallbackQueue;
 
+  async function updateQueueItem(formData: FormData) {
+    "use server";
+
+    const projectId = String(formData.get("project_id") || "").trim();
+    const status = String(formData.get("status") || "").trim();
+    const previewUrl = String(formData.get("preview_url") || "").trim();
+
+    if (!projectId) return;
+
+    try {
+      const supabase = createServerSupabaseClient();
+      const update: Record<string, string | null> = {
+        preview_url: previewUrl || null,
+      };
+      if (status) {
+        update.status = status;
+      }
+
+      await supabase.from("projects").update(update).eq("id", projectId);
+    } catch (error) {
+      return;
+    }
+  }
+
   return (
     <section className="flex flex-col gap-6">
       <header>
@@ -70,14 +93,39 @@ export default async function MyQueuePage() {
       <div className="glass-panel rounded-xl p-6 shadow-card">
         <div className="grid gap-4">
           {queue.map((item) => (
-            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-ink-900/10 bg-white/70 p-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-ink-900">{item.title}</p>
-                <p className="text-xs text-ink-500">
-                  Due {"due" in item ? item.due : formatDueDate(item.due_at)} · Priority {item.priority ?? "Normal"}
-                </p>
+            <div key={item.id} className="flex flex-col gap-4 rounded-xl border border-ink-900/10 bg-white/70 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <Link className="text-sm font-semibold text-ink-900" href={`/projects/${item.id}`}>{item.title}</Link>
+                  <p className="text-xs text-ink-500">
+                    Due {"due" in item ? item.due : formatDueDate(item.due_at)} · Priority {item.priority ?? "Normal"}
+                  </p>
+                </div>
+                <StatusPill status={item.status} />
               </div>
-              <StatusPill status={item.status} />
+              <form action={updateQueueItem} className="grid gap-3 text-xs text-ink-500 md:grid-cols-[1fr_1fr_auto]">
+                <input type="hidden" name="project_id" value={item.id} />
+                <label className="flex flex-col gap-2">
+                  Status
+                  <select name="status" defaultValue={item.status} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-ink-900">
+                    <option value="ASSIGNED">ASSIGNED</option>
+                    <option value="EDITING">EDITING</option>
+                    <option value="QC">QC</option>
+                    <option value="REVISION_REQUESTED">REVISION_REQUESTED</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-2">
+                  Preview link
+                  <input
+                    name="preview_url"
+                    className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-ink-900"
+                    placeholder="https://frame.io/..."
+                  />
+                </label>
+                <button type="submit" className="h-9 rounded-full bg-ink-900 px-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                  Update
+                </button>
+              </form>
             </div>
           ))}
         </div>
@@ -85,3 +133,4 @@ export default async function MyQueuePage() {
     </section>
   );
 }
+

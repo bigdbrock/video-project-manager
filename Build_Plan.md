@@ -77,10 +77,10 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
     - [x] projects: read only where `assigned_editor_id = auth.uid()`
     - [x] projects update: only allowed fields (status, preview_url, final_delivery_url, deliverables completion)
     - [x] messages: read/write only for projects they are assigned to
-- [ ] Seed/demo data:
-  - [ ] 1 admin, 1 qc, 2 editors
-  - [ ] 3 clients, 10 projects with deliverables
-  - [ ] a few messages in multiple projects
+- [x] Seed/demo data:
+  - [x] 1 admin, 1 qc, 2 editors
+  - [x] 3 clients, 10 projects with deliverables
+  - [x] a few messages in multiple projects
 
 **Exit criteria**
 - Editor cannot query unassigned projects or their messages (verified)
@@ -98,14 +98,14 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 - [x] **Create Project** intake form (required fields enforced)
 - [x] **Project Detail** page:
   - [x] key fields + links + deliverables
-  - [ ] revision history
-  - [ ] activity log (if enabled)
-- [ ] **Assignment** actions (QC/Admin)
-  - [ ] assign editor + due date
-  - [ ] status auto-updates to `ASSIGNED` if `NEW`
+  - [x] revision history
+  - [x] activity log (if enabled)
+- [x] **Assignment** actions (QC/Admin)
+  - [x] assign editor + due date
+  - [x] status auto-updates to `ASSIGNED` if `NEW`
 - [x] **Editor My Queue**:
   - [x] list/table sorted by due date, priority
-  - [ ] quick actions: open project, set status, paste preview link
+  - [x] quick actions: open project, set status, paste preview link
 
 **Exit criteria**
 - Create â†’ assign â†’ editor sees in My Queue â†’ editor submits to QC
@@ -147,7 +147,7 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
     - [ ] required tags + notes
     - [ ] create `revisions` row
     - [ ] increment `revision_count`
-- [ ] Revision history list on Project Detail
+- [x] revision history list on Project Detail
 - [ ] (Optional) post a **system message** into chat when:
   - [ ] revision requested
   - [ ] approved/delivered
@@ -203,4 +203,6 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 - Seed/demo data exists
 - README includes setup + migrations + run instructions
 - Staging deployment available on Vercel
+
+
 

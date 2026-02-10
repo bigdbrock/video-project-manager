@@ -14,7 +14,7 @@ type ProjectDetails = {
   final_delivery_url: string | null;
 };
 
-type SaveState = {
+export type SaveState = {
   status: "idle" | "saving" | "success" | "error";
   message?: string;
 };

@@ -1,6 +1,7 @@
 ﻿import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { ProjectDetailsEditor } from "@/components/ProjectDetailsEditor";
+import type { SaveState } from "@/components/ProjectDetailsEditor";
 import { StatusPill } from "@/components/StatusPill";
 import { ProjectChatPanel } from "@/components/ProjectChatPanel";
 import type { ChatMessage } from "@/components/ProjectChatPanel";
@@ -250,10 +251,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
-  async function updateProjectDetails(
-    prevState: { status: "idle" | "saving" | "success" | "error"; message?: string },
-    formData: FormData
-  ) {
+  async function updateProjectDetails(prevState: SaveState, formData: FormData): Promise<SaveState> {
     "use server";
 
     try {
@@ -263,7 +261,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       } = await supabaseAction.auth.getUser();
 
       if (!actionUser) {
-        return { status: "error", message: "Not signed in" };
+        return { status: "error", message: "Not signed in" } satisfies SaveState;
       }
 
       const { data: actionProfile } = await supabaseAction
@@ -281,12 +279,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         .maybeSingle();
 
       if (!project) {
-        return { status: "error", message: "Project not found" };
+        return { status: "error", message: "Project not found" } satisfies SaveState;
       }
 
       const canEdit = actionProfile?.role === "admin" || project.created_by === actionUser.id;
       if (!canEdit) {
-        return { status: "error", message: "Not allowed" };
+        return { status: "error", message: "Not allowed" } satisfies SaveState;
       }
 
       const title = String(formData.get("title") || "").trim();
@@ -323,9 +321,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       revalidatePath(`/projects/${projectId}`);
       revalidatePath("/projects");
 
-      return { status: "success" };
+      return { status: "success" } satisfies SaveState;
     } catch (error) {
-      return { status: "error", message: "Failed to update" };
+      return { status: "error", message: "Failed to update" } satisfies SaveState;
     }
   }
 

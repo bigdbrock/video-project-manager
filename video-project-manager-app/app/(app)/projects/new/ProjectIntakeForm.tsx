@@ -80,6 +80,14 @@ export function ProjectIntakeForm({ action, initialState }: IntakeFormProps) {
             />
           </label>
           <label className="flex flex-col gap-2 text-sm text-ink-500">
+            Final deliverable URL
+            <input
+              name="final_delivery_url"
+              className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-ink-900"
+              placeholder="https://frame.io/..."
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-ink-500">
             Priority
             <select name="priority" className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-ink-900">
               <option value="normal">Normal</option>

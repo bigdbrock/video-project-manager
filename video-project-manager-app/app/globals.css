@@ -12,9 +12,9 @@ body {
 }
 
 body {
-  background: radial-gradient(circle at top left, rgba(244, 107, 69, 0.08), transparent 45%),
-    linear-gradient(135deg, #f8f4ef 0%, #f1e8dc 40%, #ede3d7 100%);
-  color: #0b0f1f;
+  background: radial-gradient(circle at top left, rgba(93, 120, 166, 0.08), transparent 48%),
+    linear-gradient(135deg, #f6f2ee 0%, #f1ebe5 55%, #ede6df 100%);
+  color: #0b1220;
   font-family: var(--font-plex-sans), "Helvetica Neue", sans-serif;
 }
 
@@ -23,7 +23,7 @@ body {
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
 }

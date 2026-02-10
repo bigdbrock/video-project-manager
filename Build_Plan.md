@@ -93,18 +93,18 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 **Goal:** run the entire pipeline in-app.
 
 **Tasks**
-- [ ] Auth UI (login/logout) + profile fetch + role-aware nav
-- [ ] **Kanban board** by status (filters: editor, priority, due window)
-- [ ] **Create Project** intake form (required fields enforced)
-- [ ] **Project Detail** page:
-  - [ ] key fields + links + deliverables
+- [x] Auth UI (login/logout) + profile fetch + role-aware nav
+- [x] **Kanban board** by status (filters: editor, priority, due window)
+- [x] **Create Project** intake form (required fields enforced)
+- [x] **Project Detail** page:
+  - [x] key fields + links + deliverables
   - [ ] revision history
   - [ ] activity log (if enabled)
 - [ ] **Assignment** actions (QC/Admin)
   - [ ] assign editor + due date
   - [ ] status auto-updates to `ASSIGNED` if `NEW`
-- [ ] **Editor My Queue**:
-  - [ ] list/table sorted by due date, priority
+- [x] **Editor My Queue**:
+  - [x] list/table sorted by due date, priority
   - [ ] quick actions: open project, set status, paste preview link
 
 **Exit criteria**
@@ -203,3 +203,4 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 - Seed/demo data exists
 - README includes setup + migrations + run instructions
 - Staging deployment available on Vercel
+

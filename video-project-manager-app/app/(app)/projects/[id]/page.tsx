@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+﻿import { notFound, redirect } from "next/navigation";
 import { StatusPill } from "@/components/StatusPill";
 import { ProjectChatPanel } from "@/components/ProjectChatPanel";
 import type { ChatMessage } from "@/components/ProjectChatPanel";
@@ -10,6 +10,9 @@ const fallback = {
     id: "fallback",
     title: "ACME - 12 Oak St - Main Edit",
     status: "EDITING",
+    address: "12 Oak St",
+    type: "Branding",
+    priority: "normal",
     due_at: "2026-02-12",
     assigned_editor_id: "Editor One",
     raw_footage_url: "drive.google.com/acme/12-oak/raw",
@@ -17,6 +20,7 @@ const fallback = {
     music_assets_url: "drive.google.com/acme/music",
     preview_url: "",
     final_delivery_url: "",
+    created_by: "fallback",
   },
   deliverables: [
     { id: "d1", label: "Main video", specs: "1080p, 30fps", completed: false },
@@ -63,6 +67,9 @@ type ProjectRow = {
   id: string;
   title: string;
   status: string;
+  address: string | null;
+  type: string | null;
+  priority: string | null;
   due_at: string | null;
   assigned_editor_id: string | null;
   raw_footage_url: string | null;
@@ -70,6 +77,7 @@ type ProjectRow = {
   music_assets_url: string | null;
   preview_url: string | null;
   final_delivery_url: string | null;
+  created_by: string | null;
 };
 
 type DeliverableRow = {
@@ -116,7 +124,7 @@ async function getProjectData(id: string) {
     const { data: project, error } = await supabase
       .from("projects")
       .select(
-        "id,title,status,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url"
+        "id,title,status,address,type,priority,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by"
       )
       .eq("id", id)
       .maybeSingle();
@@ -240,6 +248,77 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function updateProjectDetails(formData: FormData) {
+    "use server";
+
+    try {
+      const supabaseAction = await createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const { data: actionProfile } = await supabaseAction
+        .from("profiles")
+        .select("role")
+        .eq("id", actionUser.id)
+        .maybeSingle();
+
+      const { data: project } = await supabaseAction
+        .from("projects")
+        .select(
+          "id,created_by,title,address,type,priority,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url"
+        )
+        .eq("id", projectId)
+        .maybeSingle();
+
+      if (!project) {
+        return;
+      }
+
+      const canEdit = actionProfile?.role === "admin" || project.created_by === actionUser.id;
+      if (!canEdit) {
+        return;
+      }
+
+      const title = String(formData.get("title") || "").trim();
+      const address = String(formData.get("address") || "").trim();
+      const type = String(formData.get("type") || "").trim();
+      const priority = String(formData.get("priority") || "").trim();
+      const rawFootageUrl = String(formData.get("raw_footage_url") || "").trim();
+      const brandAssetsUrl = String(formData.get("brand_assets_url") || "").trim();
+      const musicAssetsUrl = String(formData.get("music_assets_url") || "").trim();
+      const previewUrl = String(formData.get("preview_url") || "").trim();
+      const finalDeliveryUrl = String(formData.get("final_delivery_url") || "").trim();
+
+      await supabaseAction
+        .from("projects")
+        .update({
+          title: title || project.title,
+          address: address || null,
+          type: type || project.type,
+          priority: priority || project.priority,
+          raw_footage_url: rawFootageUrl || project.raw_footage_url,
+          brand_assets_url: brandAssetsUrl || null,
+          music_assets_url: musicAssetsUrl || null,
+          preview_url: previewUrl || null,
+          final_delivery_url: finalDeliveryUrl || null,
+        })
+        .eq("id", projectId);
+
+      await supabaseAction.from("activity_log").insert({
+        project_id: projectId,
+        actor_id: actionUser.id,
+        action: "PROJECT_UPDATED",
+      });
+    } catch (error) {
+      return;
+    }
+  }
+
   async function updateEditorWork(formData: FormData) {
     "use server";
 
@@ -336,6 +415,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   const data = result.data ?? fallback;
+  const canEditProject = role === "admin" || (data.project.created_by && data.project.created_by === user?.id);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -380,6 +460,64 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </ul>
           </div>
         </div>
+
+        {canEditProject ? (
+          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Project details</p>
+              <span className="text-[11px] uppercase tracking-[0.2em] text-ink-300">Editable</span>
+            </div>
+            <form action={updateProjectDetails} className="mt-3 grid gap-3 text-sm text-ink-700 md:grid-cols-2">
+              <label className="flex flex-col gap-2 text-xs text-ink-500 md:col-span-2">
+                Title
+                <input name="title" defaultValue={data.project.title} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Address
+                <input name="address" defaultValue={data.project.address ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Type
+                <input name="type" defaultValue={data.project.type ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Priority
+                <select name="priority" defaultValue={data.project.priority ?? "normal"} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2">
+                  <option value="normal">Normal</option>
+                  <option value="rush">Rush</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500 md:col-span-2">
+                Raw footage URL
+                <input
+                  name="raw_footage_url"
+                  defaultValue={data.project.raw_footage_url ?? ""}
+                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                  placeholder="https://drive.google.com/..."
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Brand assets URL
+                <input name="brand_assets_url" defaultValue={data.project.brand_assets_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Music assets URL
+                <input name="music_assets_url" defaultValue={data.project.music_assets_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Preview URL
+                <input name="preview_url" defaultValue={data.project.preview_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Final delivery URL
+                <input name="final_delivery_url" defaultValue={data.project.final_delivery_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
+              </label>
+              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white md:col-span-2">
+                Save changes
+              </button>
+            </form>
+          </div>
+        ) : null}
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
@@ -502,4 +640,5 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     </div>
   );
 }
+
 

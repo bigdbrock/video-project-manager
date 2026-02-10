@@ -24,9 +24,27 @@ const fallback = {
     { id: "d3", label: "Social teaser", specs: "15s", completed: true },
   ],
   messages: [
-    { id: "m1", sender_id: "QC", created_at: "2026-02-10T10:12:00Z", message: "Please prioritize the kitchen walkthrough segment." },
-    { id: "m2", sender_id: "Editor", created_at: "2026-02-10T10:25:00Z", message: "Got it. I will update and resubmit by tomorrow." },
-    { id: "m3", sender_id: "QC", created_at: "2026-02-10T11:02:00Z", message: "Also tighten the drone opener to 6 seconds." },
+    {
+      id: "m1",
+      sender_id: "QC",
+      sender_name: "QC",
+      created_at: "2026-02-10T10:12:00Z",
+      message: "Please prioritize the kitchen walkthrough segment.",
+    },
+    {
+      id: "m2",
+      sender_id: "Editor",
+      sender_name: "Editor",
+      created_at: "2026-02-10T10:25:00Z",
+      message: "Got it. I will update and resubmit by tomorrow.",
+    },
+    {
+      id: "m3",
+      sender_id: "QC",
+      sender_name: "QC",
+      created_at: "2026-02-10T11:02:00Z",
+      message: "Also tighten the drone opener to 6 seconds.",
+    },
   ],
   revisions: [
     { id: "r1", created_at: "2026-02-10T09:30:00Z", reason_tags: ["Color", "Stabilization"], notes: "Soften highlights." },
@@ -120,7 +138,7 @@ async function getProjectData(id: string) {
           .order("created_at", { ascending: true }),
         supabase
           .from("project_messages")
-          .select("id,sender_id,created_at,message")
+          .select("id,sender_id,created_at,message,sender:profiles(full_name)")
           .eq("project_id", id)
           .order("created_at", { ascending: true })
           .limit(50),
@@ -137,11 +155,19 @@ async function getProjectData(id: string) {
         supabase.from("profiles").select("id,full_name").eq("role", "editor").order("full_name"),
       ]);
 
+    const normalizedMessages = (messages ?? []).map((item: any) => ({
+      id: item.id,
+      sender_id: item.sender_id,
+      sender_name: item.sender?.full_name ?? null,
+      created_at: item.created_at,
+      message: item.message,
+    })) as ChatMessage[];
+
     return {
       data: {
         project: project as ProjectRow,
         deliverables: (deliverables ?? []) as DeliverableRow[],
-        messages: (messages ?? []) as ChatMessage[],
+        messages: normalizedMessages,
         revisions: (revisions ?? []) as RevisionRow[],
         activity: (activity ?? []) as ActivityRow[],
         editors: (editors ?? []) as EditorRow[],

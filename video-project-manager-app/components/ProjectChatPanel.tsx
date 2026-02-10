@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 export type ChatMessage = {
   id: string;
   sender_id: string | null;
+  sender_name?: string | null;
   created_at: string;
   message: string;
 };
@@ -47,7 +48,7 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPan
       const fetchMessages = async () => {
         const { data, error: fetchError } = await supabase
           .from("project_messages")
-          .select("id,sender_id,created_at,message")
+          .select("id,sender_id,created_at,message,sender:profiles(full_name)")
           .eq("project_id", projectId)
           .order("created_at", { ascending: true })
           .limit(50);
@@ -57,7 +58,14 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPan
           return;
         }
 
-        setMessages((data ?? []) as ChatMessage[]);
+        const normalized = (data ?? []).map((item: any) => ({
+          id: item.id,
+          sender_id: item.sender_id,
+          sender_name: item.sender?.full_name ?? null,
+          created_at: item.created_at,
+          message: item.message,
+        })) as ChatMessage[];
+        setMessages(normalized);
         setError(null);
       };
 
@@ -141,7 +149,7 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend }: ChatPan
           messages.map((message) => (
             <div key={message.id} className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
               <div className="flex items-center justify-between text-xs text-ink-300">
-                <span>{message.sender_id ?? "Unknown"}</span>
+                <span>{message.sender_name ?? message.sender_id ?? "Unknown"}</span>
                 <span>{formatTime(message.created_at)}</span>
               </div>
               <p className="mt-2 text-sm text-ink-700">{message.message}</p>

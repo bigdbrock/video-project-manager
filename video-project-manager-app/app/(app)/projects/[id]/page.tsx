@@ -1,5 +1,6 @@
 ﻿import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import { ProjectDetailsEditor } from "@/components/ProjectDetailsEditor";
 import { StatusPill } from "@/components/StatusPill";
 import { ProjectChatPanel } from "@/components/ProjectChatPanel";
 import type { ChatMessage } from "@/components/ProjectChatPanel";
@@ -249,7 +250,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
-  async function updateProjectDetails(formData: FormData) {
+  async function updateProjectDetails(prevState: { status: string; message?: string }, formData: FormData) {
     "use server";
 
     try {
@@ -277,12 +278,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         .maybeSingle();
 
       if (!project) {
-        return;
+        return { status: "error", message: "Project not found" };
       }
 
       const canEdit = actionProfile?.role === "admin" || project.created_by === actionUser.id;
       if (!canEdit) {
-        return;
+        return { status: "error", message: "Not allowed" };
       }
 
       const title = String(formData.get("title") || "").trim();
@@ -318,8 +319,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       revalidatePath(`/projects/${projectId}`);
       revalidatePath("/projects");
+
+      return { status: "success" };
     } catch (error) {
-      return;
+      return { status: "error", message: "Failed to update" };
     }
   }
 
@@ -465,63 +468,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {canEditProject ? (
-          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Project details</p>
-              <span className="text-[11px] uppercase tracking-[0.2em] text-ink-300">Editable</span>
-            </div>
-            <form action={updateProjectDetails} className="mt-3 grid gap-3 text-sm text-ink-700 md:grid-cols-2">
-              <label className="flex flex-col gap-2 text-xs text-ink-500 md:col-span-2">
-                Title
-                <input name="title" defaultValue={data.project.title} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Address
-                <input name="address" defaultValue={data.project.address ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Type
-                <input name="type" defaultValue={data.project.type ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Priority
-                <select name="priority" defaultValue={data.project.priority ?? "normal"} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2">
-                  <option value="normal">Normal</option>
-                  <option value="rush">Rush</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500 md:col-span-2">
-                Raw footage URL
-                <input
-                  name="raw_footage_url"
-                  defaultValue={data.project.raw_footage_url ?? ""}
-                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
-                  placeholder="https://drive.google.com/..."
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Brand assets URL
-                <input name="brand_assets_url" defaultValue={data.project.brand_assets_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Music assets URL
-                <input name="music_assets_url" defaultValue={data.project.music_assets_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Preview URL
-                <input name="preview_url" defaultValue={data.project.preview_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Final delivery URL
-                <input name="final_delivery_url" defaultValue={data.project.final_delivery_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-              </label>
-              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white md:col-span-2">
-                Save changes
-              </button>
-            </form>
-          </div>
-        ) : null}
+        <ProjectDetailsEditor canEdit={canEditProject} project={data.project} action={updateProjectDetails} />
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">

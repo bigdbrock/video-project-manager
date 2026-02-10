@@ -1,4 +1,5 @@
-﻿import { notFound, redirect } from "next/navigation";
+﻿import { revalidatePath } from "next/cache";
+import { notFound, redirect } from "next/navigation";
 import { StatusPill } from "@/components/StatusPill";
 import { ProjectChatPanel } from "@/components/ProjectChatPanel";
 import type { ChatMessage } from "@/components/ProjectChatPanel";
@@ -314,6 +315,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         actor_id: actionUser.id,
         action: "PROJECT_UPDATED",
       });
+
+      revalidatePath(`/projects/${projectId}`);
+      revalidatePath("/projects");
     } catch (error) {
       return;
     }

@@ -1,5 +1,7 @@
 ﻿import { notFound } from "next/navigation";
 import { StatusPill } from "@/components/StatusPill";
+import { ProjectChatPanel } from "@/components/ProjectChatPanel";
+import type { ChatMessage } from "@/components/ProjectChatPanel";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types/domain";
 
@@ -59,13 +61,6 @@ type DeliverableRow = {
   completed: boolean;
 };
 
-type MessageRow = {
-  id: string;
-  sender_id: string | null;
-  created_at: string;
-  message: string;
-};
-
 type RevisionRow = {
   id: string;
   created_at: string;
@@ -89,12 +84,6 @@ function formatDueDate(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 function formatDateTime(value: string) {
@@ -152,7 +141,7 @@ async function getProjectData(id: string) {
       data: {
         project: project as ProjectRow,
         deliverables: (deliverables ?? []) as DeliverableRow[],
-        messages: (messages ?? []) as MessageRow[],
+        messages: (messages ?? []) as ChatMessage[],
         revisions: (revisions ?? []) as RevisionRow[],
         activity: (activity ?? []) as ActivityRow[],
         editors: (editors ?? []) as EditorRow[],
@@ -256,8 +245,40 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     }
   }
 
+  async function sendMessage(formData: FormData) {
+    "use server";
+
+    const message = String(formData.get("message") || "").trim();
+    if (!message) return;
+
+    try {
+      const supabaseAction = createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      await supabaseAction.from("project_messages").insert({
+        project_id: params.id,
+        sender_id: actionUser.id,
+        message,
+        message_type: "user",
+      });
+
+      await supabaseAction.from("activity_log").insert({
+        project_id: params.id,
+        actor_id: actionUser.id,
+        action: "MESSAGE_SENT",
+      });
+    } catch (error) {
+      return;
+    }
+  }
+
   const data = result.data ?? fallback;
-  const lastMessage = data.messages[data.messages.length - 1];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -407,53 +428,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         ) : null}
       </section>
 
-      <section className="glass-panel rounded-xl p-6 shadow-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Project chat</p>
-            <h3 className="mt-2 text-lg font-semibold text-ink-900" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-              In-context updates
-            </h3>
-          </div>
-          <span className="text-xs text-ink-300">
-            {lastMessage ? `Last update ${formatTime(lastMessage.created_at)}` : "No messages yet"}
-          </span>
-        </div>
-        {result.error ? (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-            {result.error}. Showing fallback data.
-          </div>
-        ) : null}
-        <div className="mt-6 flex flex-col gap-4">
-          {data.messages.length ? (
-            data.messages.map((message) => (
-              <div key={message.id} className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
-                <div className="flex items-center justify-between text-xs text-ink-300">
-                  <span>{message.sender_id ?? "Unknown"}</span>
-                  <span>{formatTime(message.created_at)}</span>
-                </div>
-                <p className="mt-2 text-sm text-ink-700">{message.message}</p>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4 text-sm text-ink-500">
-              No messages yet.
-            </div>
-          )}
-        </div>
-        <div className="mt-6 flex flex-col gap-3">
-          <textarea
-            className="min-h-[90px] rounded-xl border border-ink-900/10 bg-white/80 px-3 py-2 text-sm text-ink-900"
-            placeholder="Leave a note for QC or the editor..."
-          />
-          <button
-            type="button"
-            className="self-end rounded-full bg-ink-900 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white"
-          >
-            Send message
-          </button>
-        </div>
-      </section>
+      <ProjectChatPanel projectId={data.project.id} initialMessages={data.messages} onSend={sendMessage} />
     </div>
   );
 }

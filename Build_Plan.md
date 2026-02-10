@@ -120,16 +120,16 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 - Shows read-only history and real-time updates (Supabase Realtime or polling)
 
 **Tasks**
-- [ ] Add **Chat panel** to Project Detail:
-  - [ ] message list (chronological)
-  - [ ] composer (send)
-  - [ ] basic formatting (plain text + line breaks)
-- [ ] Real-time updates:
+- [x] Add **Chat panel** to Project Detail:
+  - [x] message list (chronological)
+  - [x] composer (send)
+  - [x] basic formatting (plain text + line breaks)
+- [x] Real-time updates:
   - [ ] Preferred: Supabase Realtime subscription on `project_messages`
-  - [ ] Fallback: 5â€“10s polling (simpler, reliable on free tiers)
+  - [x] Fallback: 5â€“10s polling (simpler, reliable on free tiers)
 - [ ] Add â€œjump to latestâ€ and â€œunread since last openâ€ (optional MVP+)
-- [ ] Logging:
-  - [ ] insert `activity_log` entry for `MESSAGE_SENT` (optional)
+- [x] Logging:
+  - [x] insert `activity_log` entry for `MESSAGE_SENT` (optional)
 
 **Exit criteria**
 - Editor/QC can chat on a project and see updates promptly
@@ -203,6 +203,9 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 - Seed/demo data exists
 - README includes setup + migrations + run instructions
 - Staging deployment available on Vercel
+
+
+
 
 
 

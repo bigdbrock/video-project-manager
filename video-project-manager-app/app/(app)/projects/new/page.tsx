@@ -29,7 +29,8 @@ export default async function NewProjectPage() {
       const clientName = String(formData.get("client") || "").trim();
       const type = String(formData.get("type") || "").trim();
       const dueAt = String(formData.get("due_at") || "").trim();
-      const rawFootageUrl = String(formData.get("raw_footage_url") || "").trim();`n      const finalDeliveryUrl = String(formData.get("final_delivery_url") || "").trim();
+      const rawFootageUrl = String(formData.get("raw_footage_url") || "").trim();
+      const finalDeliveryUrl = String(formData.get("final_delivery_url") || "").trim();
       const brandAssetsUrl = String(formData.get("brand_assets_url") || "").trim();
       const musicAssetsUrl = String(formData.get("music_assets_url") || "").trim();
       const priority = String(formData.get("priority") || "normal");
@@ -73,7 +74,8 @@ export default async function NewProjectPage() {
           client_id: clientId,
           type,
           due_at: dueAt,
-          raw_footage_url: rawFootageUrl,`n          final_delivery_url: finalDeliveryUrl || null,
+          raw_footage_url: rawFootageUrl,
+          final_delivery_url: finalDeliveryUrl || null,
           brand_assets_url: brandAssetsUrl || null,
           music_assets_url: musicAssetsUrl || null,
           priority,

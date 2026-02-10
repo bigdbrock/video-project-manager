@@ -94,7 +94,7 @@ function formatDateTime(value: string) {
 
 async function getProjectData(id: string) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: project, error } = await supabase
       .from("projects")
       .select(
@@ -153,8 +153,9 @@ async function getProjectData(id: string) {
   }
 }
 
-export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createServerSupabaseClient();
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: projectId } = await params;
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -163,7 +164,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     : { data: null };
   const role = (profile?.role ?? "editor") as UserRole;
 
-  const result = await getProjectData(params.id);
+  const result = await getProjectData(projectId);
 
   if (result.error === "not_found") {
     notFound();
@@ -176,7 +177,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     const dueAt = String(formData.get("due_at") || "").trim();
 
     try {
-      const supabaseAction = createServerSupabaseClient();
+      const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
@@ -188,7 +189,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       const { data: current } = await supabaseAction
         .from("projects")
         .select("status")
-        .eq("id", params.id)
+        .eq("id", projectId)
         .maybeSingle();
 
       const nextStatus = current?.status === "NEW" ? "ASSIGNED" : current?.status;
@@ -200,10 +201,10 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           due_at: dueAt || null,
           status: nextStatus,
         })
-        .eq("id", params.id);
+        .eq("id", projectId);
 
       await supabaseAction.from("activity_log").insert({
-        project_id: params.id,
+        project_id: projectId,
         actor_id: actionUser.id,
         action: "PROJECT_ASSIGNED",
         meta: { assigned_editor_id: editorId || null, due_at: dueAt || null },
@@ -221,7 +222,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     const finalUrl = String(formData.get("final_delivery_url") || "").trim();
 
     try {
-      const supabaseAction = createServerSupabaseClient();
+      const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
@@ -239,7 +240,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         update.status = status;
       }
 
-      await supabaseAction.from("projects").update(update).eq("id", params.id);
+      await supabaseAction.from("projects").update(update).eq("id", projectId);
     } catch (error) {
       return;
     }
@@ -252,7 +253,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
     if (!message) return;
 
     try {
-      const supabaseAction = createServerSupabaseClient();
+      const supabaseAction = await createServerSupabaseClient();
       const {
         data: { user: actionUser },
       } = await supabaseAction.auth.getUser();
@@ -262,14 +263,14 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       }
 
       await supabaseAction.from("project_messages").insert({
-        project_id: params.id,
+        project_id: projectId,
         sender_id: actionUser.id,
         message,
         message_type: "user",
       });
 
       await supabaseAction.from("activity_log").insert({
-        project_id: params.id,
+        project_id: projectId,
         actor_id: actionUser.id,
         action: "MESSAGE_SENT",
       });

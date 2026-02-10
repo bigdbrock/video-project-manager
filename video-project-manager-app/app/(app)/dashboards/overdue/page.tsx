@@ -21,7 +21,7 @@ function formatDueDate(value: string | null) {
 
 async function getOverdue() {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("projects")
       .select("id,title,due_at,assigned_editor_id,status")

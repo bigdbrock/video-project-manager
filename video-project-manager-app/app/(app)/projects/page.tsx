@@ -94,7 +94,7 @@ function getDueRangeFilter(due: string | undefined) {
 
 async function getProjects(filters: SearchParams) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     let query = supabase
       .from("projects")
       .select("id,title,status,due_at,assigned_editor_id,priority")
@@ -129,7 +129,7 @@ async function getProjects(filters: SearchParams) {
 
 async function getEditors() {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data } = await supabase
       .from("profiles")
       .select("id,full_name")
@@ -149,8 +149,8 @@ function buildFilterUrl(params: SearchParams, next: Partial<SearchParams>) {
   return search ? `/projects?${search}` : "/projects";
 }
 
-export default async function ProjectsPage({ searchParams }: { searchParams?: SearchParams }) {
-  const params = searchParams ?? {};
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = (await searchParams) ?? {};
   const [result, editors] = await Promise.all([getProjects(params), getEditors()]);
 
   const grouped = statusOrder.map((status) => ({ status, items: [] as ProjectRow[] }));

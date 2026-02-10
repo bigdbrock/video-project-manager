@@ -1,4 +1,6 @@
-﻿import Link from "next/link";\r\nimport { StatusPill } from "@/components/StatusPill";\r\nimport { createServerSupabaseClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import { StatusPill } from "@/components/StatusPill";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const fallbackQueue = [
   { id: "1", title: "Acme - 12 Oak St", status: "EDITING", due: "Feb 12", priority: "Normal" },
@@ -23,7 +25,7 @@ function formatDueDate(value: string | null) {
 
 async function getQueue() {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -62,7 +64,7 @@ export default async function MyQueuePage() {
     if (!projectId) return;
 
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = await createServerSupabaseClient();
       const update: Record<string, string | null> = {
         preview_url: previewUrl || null,
       };

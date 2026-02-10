@@ -422,7 +422,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   const data = result.data ?? fallback;
-  const canEditProject = role === "admin" || (data.project.created_by && data.project.created_by === user?.id);
+  const canEditProject = role === "admin" || data.project.created_by === user?.id;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

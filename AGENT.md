@@ -59,6 +59,7 @@ npm install
 - Read a file in full before editing it.
 - Ask for explicit permission before modifying any file.
 - Keep secrets in environment variables only.
+- Run tests and check for syntax/type errors before pushing to GitHub. If tests cannot be run, explain why and note that they were not run.
 - Use server-side route handlers or server actions for privileged operations (assignment, role changes, system messages).
 - Wrap protected pages in the existing `ProtectedPage`/guard pattern used by the Dashboard.
 - Use Supabase RLS as the primary access-control mechanism (UI checks are additive, never sufficient).

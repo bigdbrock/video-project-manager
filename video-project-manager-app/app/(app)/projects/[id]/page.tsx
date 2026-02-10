@@ -312,6 +312,37 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         })
         .eq("id", projectId);
 
+      const deliverableCount = Number(formData.get("deliverables_count") || 0);
+      for (let index = 0; index < deliverableCount; index += 1) {
+        const deliverableId = String(formData.get(`deliverable_id_${index}`) || "").trim();
+        const deliverableLabel = String(formData.get(`deliverable_label_${index}`) || "").trim();
+        const deliverableSpecs = String(formData.get(`deliverable_specs_${index}`) || "").trim();
+        const deliverableCompleted = formData.get(`deliverable_completed_${index}`) === "on";
+
+        if (!deliverableLabel) {
+          continue;
+        }
+
+        if (deliverableId) {
+          await supabaseAction
+            .from("deliverables")
+            .update({
+              label: deliverableLabel,
+              specs: deliverableSpecs || null,
+              completed: deliverableCompleted,
+            })
+            .eq("id", deliverableId)
+            .eq("project_id", projectId);
+        } else {
+          await supabaseAction.from("deliverables").insert({
+            project_id: projectId,
+            label: deliverableLabel,
+            specs: deliverableSpecs || null,
+            completed: deliverableCompleted,
+          });
+        }
+      }
+
       await supabaseAction.from("activity_log").insert({
         project_id: projectId,
         actor_id: actionUser.id,
@@ -469,7 +500,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        <ProjectDetailsEditor canEdit={canEditProject} project={data.project} action={updateProjectDetails} />
+        <ProjectDetailsEditor
+          canEdit={canEditProject}
+          project={data.project}
+          deliverables={data.deliverables}
+          action={updateProjectDetails}
+        />
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">

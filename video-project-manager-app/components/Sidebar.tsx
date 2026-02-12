@@ -7,7 +7,7 @@ import type { UserRole } from "@/types/domain";
 const navItems = [
   { href: "/", label: "Overview", roles: ["admin", "qc", "editor"] },
   { href: "/projects", label: "Projects", roles: ["admin", "qc"] },
-  { href: "/projects/new", label: "New Intake", roles: ["admin", "qc"] },
+  { href: "/projects/new", label: "Create Project", roles: ["admin", "qc"] },
   { href: "/my-queue", label: "My Queue", roles: ["editor"] },
   { href: "/dashboards/overdue", label: "Overdue", roles: ["admin", "qc"] },
 ];
@@ -20,6 +20,11 @@ type SidebarProps = {
 export function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname();
   const visibleItems = role ? navItems.filter((item) => item.roles.includes(role)) : navItems;
+  const matchedItems = visibleItems.filter(
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+  );
+  const activeHref =
+    matchedItems.sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null;
 
   return (
     <aside className="flex h-full w-64 flex-col gap-8 border-r border-white/60 bg-white/70 px-6 py-8">
@@ -37,7 +42,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
       </div>
       <nav className="flex flex-col gap-2">
         {visibleItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = item.href === activeHref;
           return (
             <Link
               key={item.href}

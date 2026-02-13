@@ -625,7 +625,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       revalidatePath(`/projects/${projectId}`);
       revalidatePath("/projects");
-      revalidatePath("/dashboards/overdue");
     } catch (error) {
       return;
     }

@@ -282,7 +282,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                   className="rounded-xl border border-ink-900/10 bg-white/70 p-4 transition hover:border-ink-900/20"
                 >
                   <p className="text-sm font-semibold text-ink-900">{item.title}</p>
-                  {item.needs_info ? (
+                  {"needs_info" in item && item.needs_info ? (
                     <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-800">
                       Needs info
                     </p>

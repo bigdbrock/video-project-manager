@@ -144,12 +144,12 @@ export default async function OverviewPage() {
 
         <SectionCard title="Statistics">
           <div className="mt-4 grid gap-4">
-            <div className="rounded-xl bg-ink-900 p-5 text-white">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/70">Avg ASSIGNED to QC</p>
+            <div className="rounded-xl border border-ink-900/10 bg-white/70 p-5">
+              <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Avg ASSIGNED to QC</p>
               <p className="mt-3 text-2xl font-semibold">
                 {metrics.avgAssignedToQc === null ? "N/A" : `${metrics.avgAssignedToQc.toFixed(1)} days`}
               </p>
-              <p className="mt-2 text-xs text-white/70">
+              <p className="mt-2 text-xs text-ink-500">
                 Flow speed for SLA-eligible projects
               </p>
             </div>

@@ -54,6 +54,10 @@ export function Sidebar({ role, userName }: SidebarProps) {
           );
         })}
       </nav>
+      <div className="mt-auto rounded-xl border border-ink-900/10 bg-sand-50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-300">Focus</p>
+        <p className="mt-2 text-sm text-ink-700">Keep every deliverable, link, and note in one place.</p>
+      </div>
     </aside>
   );
 }

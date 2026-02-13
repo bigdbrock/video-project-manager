@@ -267,7 +267,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             </Link>
           ))}
           <Link
-            href={buildFilterUrl(params, { priority: "rush" })}
+            href={buildFilterUrl(params, { priority: params.priority === "rush" ? "all" : "rush" })}
             className={
               params.priority === "rush"
                 ? "rounded-full bg-ink-900 px-3 py-1 text-white"
@@ -277,7 +277,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             Rush only
           </Link>
           <Link
-            href={buildFilterUrl(params, { due: "overdue" })}
+            href={buildFilterUrl(params, { due: params.due === "overdue" ? "all" : "overdue" })}
             className={
               params.due === "overdue"
                 ? "rounded-full bg-ink-900 px-3 py-1 text-white"

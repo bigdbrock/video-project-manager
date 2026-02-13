@@ -29,10 +29,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
     <aside className="flex h-full w-64 flex-col gap-8 border-r border-white/60 bg-white/70 px-6 py-8">
       <div>
         <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Dream Home Shots</p>
-        <h1 className="mt-3 font-semibold text-2xl text-ink-900" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-          Video Ops
-        </h1>
-        <p className="mt-2 text-sm text-ink-500">Production control center</p>
+        <p className="mt-2 text-sm text-ink-500">Video Project Manager</p>
         <div className="mt-4 rounded-xl border border-ink-900/10 bg-white/80 px-3 py-2 text-xs text-ink-500">
           <p className="text-[10px] uppercase tracking-[0.3em] text-ink-300">Signed in</p>
           <p className="mt-1 text-sm text-ink-900">{userName ?? "Team member"}</p>
@@ -57,10 +54,6 @@ export function Sidebar({ role, userName }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="mt-auto rounded-xl border border-ink-900/10 bg-sand-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-300">Focus</p>
-        <p className="mt-2 text-sm text-ink-700">Keep every deliverable, link, and note in one place.</p>
-      </div>
     </aside>
   );
 }

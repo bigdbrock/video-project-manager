@@ -24,13 +24,6 @@ type ActivityRow = {
 
 const nonTerminalStatuses = ["NEW", "ASSIGNED", "EDITING", "QC", "REVISION_REQUESTED", "READY", "ON_HOLD"];
 
-function formatDueDate(value: string | null) {
-  if (!value) return "No due date";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 function average(numbers: number[]) {
   if (!numbers.length) return null;
   const total = numbers.reduce((sum, value) => sum + value, 0);
@@ -71,15 +64,6 @@ async function getDashboardData() {
     const editorRows = (editors ?? []) as EditorRow[];
     const activityRows = (activity ?? []) as ActivityRow[];
 
-    const overdue = projectRows.filter(
-      (project) =>
-        !project.needs_info &&
-        project.due_at &&
-        !["DELIVERED", "ARCHIVED"].includes(project.status) &&
-        new Date(project.due_at).getTime() < Date.now()
-    );
-
-    const editorMap = new Map(editorRows.map((editor) => [editor.id, editor.full_name ?? "Unnamed editor"]));
     const workload = editorRows.map((editor) => {
       const assigned = projectRows.filter((project) => project.assigned_editor_id === editor.id);
       const byStatus = nonTerminalStatuses.reduce<Record<string, number>>((acc, status) => {
@@ -94,9 +78,7 @@ async function getDashboardData() {
       };
     });
 
-    const slaEligibleProjectIds = new Set(
-      projectRows.filter((project) => !project.needs_info).map((project) => project.id)
-    );
+    const slaEligibleProjectIds = new Set(projectRows.filter((project) => !project.needs_info).map((project) => project.id));
     const projectTimeline = new Map<string, { assignedAt?: number; qcAt?: number }>();
     for (const event of activityRows) {
       if (!slaEligibleProjectIds.has(event.project_id)) continue;
@@ -116,7 +98,6 @@ async function getDashboardData() {
       .map((item) => ((item.qcAt ?? 0) - (item.assignedAt ?? 0)) / (1000 * 60 * 60 * 24));
 
     const avgAssignedToQc = average(cycleTimes);
-    const avgRevisions = average(projectRows.map((project) => project.revision_count ?? 0));
     const maxWorkload = Math.max(1, ...workload.map((row) => row.total));
     const workloadChartRows = workload.map((row) => ({
       name: row.name,
@@ -132,12 +113,9 @@ async function getDashboardData() {
 
     return {
       data: {
-        overdue,
         workload,
         maxWorkload,
         avgAssignedToQc,
-        avgRevisions,
-        editorMap,
         workloadChartRows,
       },
       error: null,
@@ -150,7 +128,6 @@ async function getDashboardData() {
 export default async function OverdueDashboard() {
   const result = await getDashboardData();
   const data = result.data ?? {
-    overdue: [] as ProjectRow[],
     workload: [] as {
       id: string;
       name: string;
@@ -159,8 +136,6 @@ export default async function OverdueDashboard() {
     }[],
     maxWorkload: 1,
     avgAssignedToQc: null as number | null,
-    avgRevisions: null as number | null,
-    editorMap: new Map<string, string>(),
     workloadChartRows: [] as {
       name: string;
       total: number;
@@ -181,7 +156,7 @@ export default async function OverdueDashboard() {
         <h2 className="mt-2 text-2xl font-semibold text-ink-900" style={{ fontFamily: "var(--font-space-grotesk)" }}>
           Operations
         </h2>
-        <p className="mt-2 text-sm text-ink-500">Overdue projects, workload distribution, and flow metrics.</p>
+        <p className="mt-2 text-sm text-ink-500">Workload distribution and flow metrics.</p>
         {result.error ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
             {result.error}. Showing available data only.
@@ -194,12 +169,6 @@ export default async function OverdueDashboard() {
           <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Avg ASSIGNED to QC</p>
           <p className="mt-3 text-3xl font-semibold text-ink-900">
             {data.avgAssignedToQc === null ? "N/A" : `${data.avgAssignedToQc.toFixed(1)} days`}
-          </p>
-        </div>
-        <div className="glass-panel rounded-xl p-6 shadow-card">
-          <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Avg revisions per project</p>
-          <p className="mt-3 text-3xl font-semibold text-ink-900">
-            {data.avgRevisions === null ? "N/A" : data.avgRevisions.toFixed(2)}
           </p>
         </div>
       </div>
@@ -242,36 +211,6 @@ export default async function OverdueDashboard() {
         </div>
       </div>
 
-      <div className="glass-panel rounded-xl p-6 shadow-card">
-        <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Overdue projects</p>
-        <div className="mt-4 grid gap-3">
-          {data.overdue.length ? (
-            data.overdue.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col gap-3 rounded-xl border border-ink-900/10 bg-white/75 p-4 md:flex-row md:items-center md:justify-between"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-ink-900">{item.title}</p>
-                  <p className="text-xs text-ink-500">
-                    Owner {item.assigned_editor_id ? data.editorMap.get(item.assigned_editor_id) ?? item.assigned_editor_id : "Unassigned"}
-                  </p>
-                  {item.needs_info ? (
-                    <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-800">
-                      Needs info
-                    </p>
-                  ) : null}
-                </div>
-                <div className="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
-                  Due {formatDueDate(item.due_at)}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-ink-500">No overdue projects.</p>
-          )}
-        </div>
-      </div>
     </section>
   );
 }

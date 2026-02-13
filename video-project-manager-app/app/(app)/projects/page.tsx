@@ -198,9 +198,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     <section className="flex flex-col gap-6">
       <header className="flex flex-col gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Pipeline</p>
           <h2 className="mt-2 text-2xl font-semibold text-ink-900" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            Projects Kanban
+            Projects Pipeline
           </h2>
           <p className="mt-2 text-sm text-ink-500">Filter by editor, priority, and due window.</p>
         </div>

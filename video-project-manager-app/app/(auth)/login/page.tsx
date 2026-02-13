@@ -37,7 +37,7 @@ export default function LoginPage() {
       <header>
         <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Welcome</p>
         <h2 className="mt-2 text-2xl font-semibold text-ink-900" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-          Sign in to Video Ops
+          Sign in to Video Project Manager
         </h2>
         <p className="mt-2 text-sm text-ink-500">Use your Dream Home Shots credentials.</p>
       </header>

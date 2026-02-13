@@ -79,10 +79,55 @@ export default async function NewProjectPage() {
           brand_assets_url: brandAssetsUrl || null,
           music_assets_url: musicAssetsUrl || null,
           priority,
+          notes: notes || null,
           created_by: user.id,
         })
         .select("id")
         .single();
+
+      if (projectError?.message.includes("column \"notes\" of relation \"projects\" does not exist")) {
+        const fallbackInsert = await supabase
+          .from("projects")
+          .insert({
+            title,
+            client_id: clientId,
+            type,
+            due_at: dueAt,
+            raw_footage_url: rawFootageUrl,
+            final_delivery_url: finalDeliveryUrl || null,
+            brand_assets_url: brandAssetsUrl || null,
+            music_assets_url: musicAssetsUrl || null,
+            priority,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+        if (fallbackInsert.error || !fallbackInsert.data) {
+          return { status: "error", message: fallbackInsert.error?.message ?? "Failed to create project." };
+        }
+
+        const projectId = fallbackInsert.data.id;
+        const deliverableRows = deliverables.map((item) => ({
+          project_id: projectId,
+          label: item.label,
+        }));
+
+        const { error: deliverableError } = await supabase.from("deliverables").insert(deliverableRows);
+        if (deliverableError) {
+          return { status: "error", message: deliverableError.message };
+        }
+
+        if (notes) {
+          await supabase.from("activity_log").insert({
+            project_id: projectId,
+            actor_id: user.id,
+            action: "PROJECT_CREATED",
+            meta: { notes },
+          });
+        }
+
+        return { status: "success", message: "Project created successfully." };
+      }
 
       if (projectError || !project) {
         return { status: "error", message: projectError?.message ?? "Failed to create project." };

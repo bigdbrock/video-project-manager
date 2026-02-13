@@ -7,6 +7,7 @@ type ProjectDetails = {
   address: string | null;
   type: string | null;
   priority: string | null;
+  notes?: string | null;
   raw_footage_url: string | null;
   brand_assets_url: string | null;
   music_assets_url: string | null;
@@ -101,6 +102,15 @@ export function ProjectDetailsEditor({ canEdit, project, deliverables, action }:
               defaultValue={project.raw_footage_url ?? ""}
               className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
               placeholder="https://drive.google.com/..."
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-xs text-ink-500 md:col-span-2">
+            Project notes
+            <textarea
+              name="notes"
+              defaultValue={project.notes ?? ""}
+              className="min-h-[90px] rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+              placeholder="Brand notes, pacing, references, constraints..."
             />
           </label>
           <label className="flex flex-col gap-2 text-xs text-ink-500">

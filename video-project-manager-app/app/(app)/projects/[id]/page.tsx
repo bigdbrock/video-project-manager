@@ -18,6 +18,7 @@ const fallback = {
     priority: "normal",
     due_at: "2026-02-12",
     assigned_editor_id: "Editor One",
+    notes: "Capture natural pacing and warm color grade.",
     raw_footage_url: "drive.google.com/acme/12-oak/raw",
     brand_assets_url: "drive.google.com/acme/brand",
     music_assets_url: "drive.google.com/acme/music",
@@ -77,6 +78,7 @@ type ProjectRow = {
   priority: string | null;
   due_at: string | null;
   assigned_editor_id: string | null;
+  notes: string | null;
   raw_footage_url: string | null;
   brand_assets_url: string | null;
   music_assets_url: string | null;
@@ -131,12 +133,12 @@ async function getProjectData(id: string) {
     let { data: project, error } = await supabase
       .from("projects")
       .select(
-        "id,title,status,address,type,priority,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by,needs_info,needs_info_note"
+        "id,title,status,address,type,priority,due_at,assigned_editor_id,notes,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by,needs_info,needs_info_note"
       )
       .eq("id", id)
       .maybeSingle();
 
-    if (error?.message.includes("column projects.needs_info does not exist")) {
+    if (error?.message.includes("column projects.needs_info does not exist") || error?.message.includes("column projects.notes does not exist")) {
       const fallbackProject = await supabase
         .from("projects")
         .select(
@@ -145,7 +147,7 @@ async function getProjectData(id: string) {
         .eq("id", id)
         .maybeSingle();
       project = fallbackProject.data
-        ? ({ ...fallbackProject.data, needs_info: false, needs_info_note: null } as ProjectRow)
+        ? ({ ...fallbackProject.data, notes: null, needs_info: false, needs_info_note: null } as ProjectRow)
         : null;
       error = fallbackProject.error;
     }
@@ -288,13 +290,31 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         .eq("id", actionUser.id)
         .maybeSingle();
 
-      const { data: project } = await supabaseAction
+      let { data: project, error: projectLookupError } = await supabaseAction
         .from("projects")
         .select(
-          "id,created_by,title,address,type,priority,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url"
+          "id,created_by,title,address,type,priority,notes,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url"
         )
         .eq("id", projectId)
         .maybeSingle();
+
+      let supportsNotes = true;
+      if (projectLookupError?.message.includes("column projects.notes does not exist")) {
+        supportsNotes = false;
+        const fallbackLookup = await supabaseAction
+          .from("projects")
+          .select(
+            "id,created_by,title,address,type,priority,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url"
+          )
+          .eq("id", projectId)
+          .maybeSingle();
+        project = fallbackLookup.data ? ({ ...fallbackLookup.data, notes: null } as typeof project) : null;
+        projectLookupError = fallbackLookup.error;
+      }
+
+      if (projectLookupError) {
+        return { status: "error", message: projectLookupError.message } satisfies SaveState;
+      }
 
       if (!project) {
         return { status: "error", message: "Project not found" } satisfies SaveState;
@@ -309,26 +329,30 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       const address = String(formData.get("address") || "").trim();
       const type = String(formData.get("type") || "").trim();
       const priority = String(formData.get("priority") || "").trim();
+      const notes = String(formData.get("notes") || "").trim();
       const rawFootageUrl = String(formData.get("raw_footage_url") || "").trim();
       const brandAssetsUrl = String(formData.get("brand_assets_url") || "").trim();
       const musicAssetsUrl = String(formData.get("music_assets_url") || "").trim();
       const previewUrl = String(formData.get("preview_url") || "").trim();
       const finalDeliveryUrl = String(formData.get("final_delivery_url") || "").trim();
 
-      await supabaseAction
-        .from("projects")
-        .update({
-          title: title || project.title,
-          address: address || null,
-          type: type || project.type,
-          priority: priority || project.priority,
-          raw_footage_url: rawFootageUrl || project.raw_footage_url,
-          brand_assets_url: brandAssetsUrl || null,
-          music_assets_url: musicAssetsUrl || null,
-          preview_url: previewUrl || null,
-          final_delivery_url: finalDeliveryUrl || null,
-        })
-        .eq("id", projectId);
+      const baseUpdate = {
+        title: title || project.title,
+        address: address || null,
+        type: type || project.type,
+        priority: priority || project.priority,
+        raw_footage_url: rawFootageUrl || project.raw_footage_url,
+        brand_assets_url: brandAssetsUrl || null,
+        music_assets_url: musicAssetsUrl || null,
+        preview_url: previewUrl || null,
+        final_delivery_url: finalDeliveryUrl || null,
+      };
+
+      const updatePayload = supportsNotes
+        ? { ...baseUpdate, notes: notes || null }
+        : baseUpdate;
+
+      await supabaseAction.from("projects").update(updatePayload).eq("id", projectId);
 
       const deliverableCount = Number(formData.get("deliverables_count") || 0);
       for (let index = 0; index < deliverableCount; index += 1) {
@@ -572,64 +596,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
-  async function updateNeedsInfo(formData: FormData) {
-    "use server";
-
-    const flagValue = String(formData.get("needs_info") || "off");
-    const needsInfo = flagValue === "on";
-    const note = String(formData.get("needs_info_note") || "").trim();
-
-    try {
-      const supabaseAction = await createServerSupabaseClient();
-      const {
-        data: { user: actionUser },
-      } = await supabaseAction.auth.getUser();
-
-      if (!actionUser) {
-        return;
-      }
-
-      const { data: actionProfile } = await supabaseAction
-        .from("profiles")
-        .select("role")
-        .eq("id", actionUser.id)
-        .maybeSingle();
-
-      if (!actionProfile || (actionProfile.role !== "admin" && actionProfile.role !== "qc")) {
-        return;
-      }
-
-      await supabaseAction
-        .from("projects")
-        .update({
-          needs_info: needsInfo,
-          needs_info_note: note || null,
-        })
-        .eq("id", projectId);
-
-      await supabaseAction.from("activity_log").insert({
-        project_id: projectId,
-        actor_id: actionUser.id,
-        action: needsInfo ? "NEEDS_INFO_ENABLED" : "NEEDS_INFO_CLEARED",
-      });
-
-      await supabaseAction.from("project_messages").insert({
-        project_id: projectId,
-        sender_id: actionUser.id,
-        message_type: "system",
-        message: needsInfo
-          ? "Project flagged as needs info. SLA timing is paused."
-          : "Needs info flag cleared. SLA timing resumed.",
-        metadata: note ? { note } : null,
-      });
-
-      revalidatePath(`/projects/${projectId}`);
-      revalidatePath("/projects");
-    } catch (error) {
-      return;
-    }
-  }
-
   async function deleteProject() {
     "use server";
 
@@ -678,14 +644,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
           <StatusPill status={data.project.status} />
         </div>
-        {data.project.needs_info ? (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-            <p className="font-semibold uppercase tracking-[0.15em]">Needs info</p>
-            <p className="mt-1">
-              {data.project.needs_info_note ?? "Waiting on client/vendor details. SLA and overdue pressure are paused."}
-            </p>
-          </div>
-        ) : null}
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Links</p>
@@ -695,6 +653,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <li>Music: {data.project.music_assets_url ?? "Not set"}</li>
               <li>Preview: {data.project.preview_url ?? "Not set"}</li>
               <li>Final: {data.project.final_delivery_url ?? "Not set"}</li>
+              <li>Notes: {data.project.notes ?? "Not set"}</li>
             </ul>
           </div>
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
@@ -798,35 +757,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </label>
               <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
                 Request Revision
-              </button>
-            </form>
-          </div>
-        ) : null}
-
-        {(role === "admin" || role === "qc") ? (
-          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Needs info flag</p>
-            <form action={updateNeedsInfo} className="mt-3 grid gap-3 text-sm text-ink-700">
-              <label className="flex items-center gap-2 text-xs text-ink-500">
-                <input
-                  type="checkbox"
-                  name="needs_info"
-                  defaultChecked={data.project.needs_info}
-                  className="h-4 w-4 rounded border-ink-900/20"
-                />
-                Pause SLA for this project (blocked waiting for info)
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Note
-                <textarea
-                  name="needs_info_note"
-                  defaultValue={data.project.needs_info_note ?? ""}
-                  className="min-h-[70px] rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
-                  placeholder="Optional: what info is missing?"
-                />
-              </label>
-              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
-                Save needs info
               </button>
             </form>
           </div>

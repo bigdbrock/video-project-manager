@@ -65,6 +65,18 @@ export default async function MyQueuePage() {
 
     try {
       const supabase = await createServerSupabaseClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: current } = await supabase
+        .from("projects")
+        .select("status")
+        .eq("id", projectId)
+        .maybeSingle();
+
       const update: Record<string, string | null> = {
         preview_url: previewUrl || null,
       };
@@ -73,6 +85,15 @@ export default async function MyQueuePage() {
       }
 
       await supabase.from("projects").update(update).eq("id", projectId);
+
+      if (status && status !== current?.status) {
+        await supabase.from("activity_log").insert({
+          project_id: projectId,
+          actor_id: user.id,
+          action: status === "QC" ? "EDITOR_SUBMITTED_QC" : "EDITOR_STATUS_UPDATED",
+          meta: { status },
+        });
+      }
     } catch (error) {
       return;
     }

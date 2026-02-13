@@ -375,6 +375,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         return;
       }
 
+      const { data: current } = await supabaseAction
+        .from("projects")
+        .select("status")
+        .eq("id", projectId)
+        .maybeSingle();
+
       const update: Record<string, string | null> = {
         preview_url: previewUrl || null,
         final_delivery_url: finalUrl || null,
@@ -385,6 +391,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       }
 
       await supabaseAction.from("projects").update(update).eq("id", projectId);
+
+      if (status && status !== current?.status) {
+        await supabaseAction.from("activity_log").insert({
+          project_id: projectId,
+          actor_id: actionUser.id,
+          action: status === "QC" ? "EDITOR_SUBMITTED_QC" : "EDITOR_STATUS_UPDATED",
+          meta: { status },
+        });
+      }
     } catch (error) {
       return;
     }

@@ -162,14 +162,14 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 **Goal:** immediate visibility into bottlenecks and team load.
 
 **Tasks**
-  [ ] Overdue view:
-    [ ] `due_at < now` and status not in `DELIVERED/ARCHIVED`
-  [ ] Workload view:
-    [ ] counts by editor and status
-  [ ] Metrics (basic):
-    [ ] avg time `ASSIGNED â†’ QC`
-    [ ] avg revisions per project
-  [ ] Implement charts in Recharts 3.7
+  [x] Overdue view:
+    [x] `due_at < now` and status not in `DELIVERED/ARCHIVED`
+  [x] Workload view:
+    [x] counts by editor and status
+  [x] Metrics (basic):
+    [x] avg time `ASSIGNED â†’ QC`
+    [x] avg revisions per project
+  [x] Implement charts in Recharts 3.7
 
 **Exit criteria**
   You can identify late/stuck work and editor load in one click

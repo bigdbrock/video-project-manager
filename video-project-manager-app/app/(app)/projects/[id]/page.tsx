@@ -423,6 +423,122 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function handleQcDecision(formData: FormData) {
+    "use server";
+
+    const decision = String(formData.get("decision") || "").trim();
+    const notes = String(formData.get("revision_notes") || "").trim();
+    const rawTags = String(formData.get("revision_tags") || "").trim();
+    const tags = rawTags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    try {
+      const supabaseAction = await createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const { data: actionProfile } = await supabaseAction
+        .from("profiles")
+        .select("role")
+        .eq("id", actionUser.id)
+        .maybeSingle();
+
+      if (!actionProfile || (actionProfile.role !== "admin" && actionProfile.role !== "qc")) {
+        return;
+      }
+
+      const { data: currentProject } = await supabaseAction
+        .from("projects")
+        .select("assigned_editor_id,revision_count,status")
+        .eq("id", projectId)
+        .maybeSingle();
+
+      if (!currentProject) {
+        return;
+      }
+
+      if (decision === "ready" || decision === "delivered") {
+        const nextStatus = decision === "delivered" ? "DELIVERED" : "READY";
+
+        await supabaseAction
+          .from("projects")
+          .update({
+            status: nextStatus,
+          })
+          .eq("id", projectId);
+
+        await supabaseAction.from("activity_log").insert({
+          project_id: projectId,
+          actor_id: actionUser.id,
+          action: nextStatus === "DELIVERED" ? "PROJECT_DELIVERED" : "PROJECT_READY",
+        });
+
+        await supabaseAction.from("project_messages").insert({
+          project_id: projectId,
+          sender_id: actionUser.id,
+          message_type: "system",
+          message:
+            nextStatus === "DELIVERED"
+              ? "QC marked this project as delivered."
+              : "QC approved this project and marked it ready.",
+        });
+      }
+
+      if (decision === "request_revision") {
+        if (!notes || tags.length === 0) {
+          return;
+        }
+
+        await supabaseAction.from("revisions").insert({
+          project_id: projectId,
+          requested_by: actionUser.id,
+          editor_id: currentProject.assigned_editor_id,
+          reason_tags: tags,
+          notes,
+        });
+
+        await supabaseAction
+          .from("projects")
+          .update({
+            status: "REVISION_REQUESTED",
+            revision_count: (currentProject.revision_count ?? 0) + 1,
+          })
+          .eq("id", projectId);
+
+        await supabaseAction.from("activity_log").insert({
+          project_id: projectId,
+          actor_id: actionUser.id,
+          action: "REVISION_REQUESTED",
+          meta: {
+            reason_tags: tags,
+          },
+        });
+
+        await supabaseAction.from("project_messages").insert({
+          project_id: projectId,
+          sender_id: actionUser.id,
+          message_type: "system",
+          message: `Revision requested: ${tags.join(", ")}.`,
+          metadata: {
+            notes,
+          },
+        });
+      }
+
+      revalidatePath(`/projects/${projectId}`);
+      revalidatePath("/projects");
+    } catch (error) {
+      return;
+    }
+  }
+
   async function deleteProject() {
     "use server";
 
@@ -540,6 +656,53 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
         </div>
+
+        {(role === "admin" || role === "qc") ? (
+          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">QC actions</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+              <div className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-xs text-ink-500">
+                Approve this project or request a structured revision.
+              </div>
+              <form action={handleQcDecision}>
+                <input type="hidden" name="decision" value="ready" />
+                <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                  Mark Ready
+                </button>
+              </form>
+              <form action={handleQcDecision}>
+                <input type="hidden" name="decision" value="delivered" />
+                <button type="submit" className="h-10 rounded-full border border-ink-900/20 bg-white px-4 text-xs font-semibold uppercase tracking-[0.2em] text-ink-900">
+                  Mark Delivered
+                </button>
+              </form>
+            </div>
+            <form action={handleQcDecision} className="mt-4 grid gap-3 text-sm text-ink-700">
+              <input type="hidden" name="decision" value="request_revision" />
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Revision tags (comma separated)
+                <input
+                  name="revision_tags"
+                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                  placeholder="Color, pacing, audio"
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Notes
+                <textarea
+                  name="revision_notes"
+                  className="min-h-[90px] rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                  placeholder="What should change before approval?"
+                  required
+                />
+              </label>
+              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                Request Revision
+              </button>
+            </form>
+          </div>
+        ) : null}
 
         {role !== "editor" ? (
           <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">

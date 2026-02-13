@@ -141,16 +141,16 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 **Goal:** eliminate messy revision communication and keep it searchable.
 
 **Tasks**
-  [ ] QC panel actions:
-    [ ] Approve (â†’ `READY` or `DELIVERED`)
-    [ ] Request revision (â†’ `REVISION_REQUESTED`)
-      [ ] required tags + notes
-      [ ] create `revisions` row
-      [ ] increment `revision_count`
+  [x] QC panel actions:
+    [x] Approve (â†’ `READY` or `DELIVERED`)
+    [x] Request revision (â†’ `REVISION_REQUESTED`)
+      [x] required tags + notes
+      [x] create `revisions` row
+      [x] increment `revision_count`
   [x] revision history list on Project Detail
-  [ ] (Optional) post a **system message** into chat when:
-    [ ] revision requested
-    [ ] approved/delivered
+  [x] (Optional) post a **system message** into chat when:
+    [x] revision requested
+    [x] approved/delivered
 
 **Exit criteria**
   Every revision request is logged and status updates correctly

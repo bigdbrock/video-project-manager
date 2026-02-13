@@ -179,8 +179,8 @@ Ship a usable MVP that centralizes **video project intake â†’ assignment â
 ### Milestone 6 â€” Notifications + QoL (optional)
 **Tasks**
   [ ] Discord webhook notifications (if still desired)
-  [ ] â€œNeeds infoâ€ flag to block and pause SLA metrics
-  [ ] Message mentions (e.g., `@qc`, `@editor`) MVP+
+  [x] â€œNeeds infoâ€ flag to block and pause SLA metrics
+  [x] Message mentions (e.g., `@qc`, `@editor`) MVP+
   [ ] Attachments (MVP+): store in Supabase Storage or keep as external URLs
 
    

@@ -8,6 +8,7 @@ type ProjectRow = {
   assigned_editor_id: string | null;
   status: string;
   revision_count: number;
+  needs_info: boolean;
 };
 
 type EditorRow = {
@@ -42,7 +43,7 @@ async function getDashboardData() {
     const [{ data: projects, error: projectsError }, { data: editors }, { data: activity }] = await Promise.all([
       supabase
         .from("projects")
-        .select("id,title,due_at,assigned_editor_id,status,revision_count")
+        .select("id,title,due_at,assigned_editor_id,status,revision_count,needs_info")
         .order("due_at", { ascending: true, nullsFirst: false }),
       supabase.from("profiles").select("id,full_name").eq("role", "editor").order("full_name"),
       supabase
@@ -62,6 +63,7 @@ async function getDashboardData() {
 
     const overdue = projectRows.filter(
       (project) =>
+        !project.needs_info &&
         project.due_at &&
         !["DELIVERED", "ARCHIVED"].includes(project.status) &&
         new Date(project.due_at).getTime() < Date.now()
@@ -82,8 +84,12 @@ async function getDashboardData() {
       };
     });
 
+    const slaEligibleProjectIds = new Set(
+      projectRows.filter((project) => !project.needs_info).map((project) => project.id)
+    );
     const projectTimeline = new Map<string, { assignedAt?: number; qcAt?: number }>();
     for (const event of activityRows) {
+      if (!slaEligibleProjectIds.has(event.project_id)) continue;
       const row = projectTimeline.get(event.project_id) ?? {};
       const createdAt = new Date(event.created_at).getTime();
       if (event.action === "PROJECT_ASSIGNED" && row.assignedAt === undefined) {
@@ -240,6 +246,11 @@ export default async function OverdueDashboard() {
                   <p className="text-xs text-ink-500">
                     Owner {item.assigned_editor_id ? data.editorMap.get(item.assigned_editor_id) ?? item.assigned_editor_id : "Unassigned"}
                   </p>
+                  {item.needs_info ? (
+                    <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-800">
+                      Needs info
+                    </p>
+                  ) : null}
                 </div>
                 <div className="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
                   Due {formatDueDate(item.due_at)}

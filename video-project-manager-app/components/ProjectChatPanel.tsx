@@ -18,6 +18,22 @@ type ChatPanelProps = {
   currentUserId?: string | null;
 };
 
+const knownMentions = new Set(["@qc", "@editor", "@admin", "@you"]);
+
+function renderMessageWithMentions(message: string) {
+  const parts = message.split(/(@[a-zA-Z0-9_]+)/g);
+  return parts.map((part, index) => {
+    if (knownMentions.has(part.toLowerCase())) {
+      return (
+        <span key={`${part}-${index}`} className="rounded bg-ember-500/15 px-1 py-0.5 font-semibold text-ember-600">
+          {part}
+        </span>
+      );
+    }
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
+}
+
 function formatTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -157,7 +173,9 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend, currentUs
                 </span>
                 <span>{formatTime(message.created_at)}</span>
               </div>
-              <p className="mt-2 text-sm text-ink-700">{message.message}</p>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-700">
+                {renderMessageWithMentions(message.message)}
+              </p>
             </div>
           ))
         ) : (
@@ -173,7 +191,7 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend, currentUs
             name="message"
             required
             className="min-h-[90px] rounded-xl border border-ink-900/10 bg-white/80 px-3 py-2 text-sm text-ink-900"
-            placeholder="Leave a note for QC or the editor..."
+            placeholder="Leave a note for QC or the editor... Use @qc or @editor to mention."
           />
           <button
             type="submit"

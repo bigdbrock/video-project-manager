@@ -24,6 +24,8 @@ const fallback = {
     preview_url: "",
     final_delivery_url: "",
     created_by: "fallback",
+    needs_info: false,
+    needs_info_note: "",
   },
   deliverables: [
     { id: "d1", label: "Main video", specs: "1080p, 30fps", completed: false },
@@ -81,6 +83,8 @@ type ProjectRow = {
   preview_url: string | null;
   final_delivery_url: string | null;
   created_by: string | null;
+  needs_info: boolean;
+  needs_info_note: string | null;
 };
 
 type DeliverableRow = {
@@ -127,7 +131,7 @@ async function getProjectData(id: string) {
     const { data: project, error } = await supabase
       .from("projects")
       .select(
-        "id,title,status,address,type,priority,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by"
+        "id,title,status,address,type,priority,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by,needs_info,needs_info_note"
       )
       .eq("id", id)
       .maybeSingle();
@@ -554,6 +558,65 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function updateNeedsInfo(formData: FormData) {
+    "use server";
+
+    const flagValue = String(formData.get("needs_info") || "off");
+    const needsInfo = flagValue === "on";
+    const note = String(formData.get("needs_info_note") || "").trim();
+
+    try {
+      const supabaseAction = await createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const { data: actionProfile } = await supabaseAction
+        .from("profiles")
+        .select("role")
+        .eq("id", actionUser.id)
+        .maybeSingle();
+
+      if (!actionProfile || (actionProfile.role !== "admin" && actionProfile.role !== "qc")) {
+        return;
+      }
+
+      await supabaseAction
+        .from("projects")
+        .update({
+          needs_info: needsInfo,
+          needs_info_note: note || null,
+        })
+        .eq("id", projectId);
+
+      await supabaseAction.from("activity_log").insert({
+        project_id: projectId,
+        actor_id: actionUser.id,
+        action: needsInfo ? "NEEDS_INFO_ENABLED" : "NEEDS_INFO_CLEARED",
+      });
+
+      await supabaseAction.from("project_messages").insert({
+        project_id: projectId,
+        sender_id: actionUser.id,
+        message_type: "system",
+        message: needsInfo
+          ? "Project flagged as needs info. SLA timing is paused."
+          : "Needs info flag cleared. SLA timing resumed.",
+        metadata: note ? { note } : null,
+      });
+
+      revalidatePath(`/projects/${projectId}`);
+      revalidatePath("/projects");
+      revalidatePath("/dashboards/overdue");
+    } catch (error) {
+      return;
+    }
+  }
+
   async function deleteProject() {
     "use server";
 
@@ -602,6 +665,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
           <StatusPill status={data.project.status} />
         </div>
+        {data.project.needs_info ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+            <p className="font-semibold uppercase tracking-[0.15em]">Needs info</p>
+            <p className="mt-1">
+              {data.project.needs_info_note ?? "Waiting on client/vendor details. SLA and overdue pressure are paused."}
+            </p>
+          </div>
+        ) : null}
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Links</p>
@@ -714,6 +785,35 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </label>
               <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
                 Request Revision
+              </button>
+            </form>
+          </div>
+        ) : null}
+
+        {(role === "admin" || role === "qc") ? (
+          <div className="mt-6 rounded-xl border border-ink-900/10 bg-white/70 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Needs info flag</p>
+            <form action={updateNeedsInfo} className="mt-3 grid gap-3 text-sm text-ink-700">
+              <label className="flex items-center gap-2 text-xs text-ink-500">
+                <input
+                  type="checkbox"
+                  name="needs_info"
+                  defaultChecked={data.project.needs_info}
+                  className="h-4 w-4 rounded border-ink-900/20"
+                />
+                Pause SLA for this project (blocked waiting for info)
+              </label>
+              <label className="flex flex-col gap-2 text-xs text-ink-500">
+                Note
+                <textarea
+                  name="needs_info_note"
+                  defaultValue={data.project.needs_info_note ?? ""}
+                  className="min-h-[70px] rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
+                  placeholder="Optional: what info is missing?"
+                />
+              </label>
+              <button type="submit" className="h-10 rounded-full bg-ink-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                Save needs info
               </button>
             </form>
           </div>

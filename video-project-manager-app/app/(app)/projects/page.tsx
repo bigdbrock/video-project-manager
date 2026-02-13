@@ -55,6 +55,7 @@ type ProjectRow = {
   due_at: string | null;
   assigned_editor_id: string | null;
   priority: string | null;
+  needs_info: boolean;
 };
 
 type EditorRow = {
@@ -97,7 +98,7 @@ async function getProjects(filters: SearchParams) {
     const supabase = await createServerSupabaseClient();
     let query = supabase
       .from("projects")
-      .select("id,title,status,due_at,assigned_editor_id,priority")
+      .select("id,title,status,due_at,assigned_editor_id,priority,needs_info")
       .order("due_at", { ascending: true, nullsFirst: false });
 
     if (filters.editor) {
@@ -281,6 +282,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                   className="rounded-xl border border-ink-900/10 bg-white/70 p-4 transition hover:border-ink-900/20"
                 >
                   <p className="text-sm font-semibold text-ink-900">{item.title}</p>
+                  {item.needs_info ? (
+                    <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-800">
+                      Needs info
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-xs text-ink-500">Due {"due" in item ? item.due : formatDueDate(item.due_at)}</p>
                 </Link>
               ))}

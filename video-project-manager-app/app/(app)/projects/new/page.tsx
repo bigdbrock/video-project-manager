@@ -11,6 +11,16 @@ function parseDeliverables(raw: string) {
     .map((label) => ({ label }));
 }
 
+function isMissingProjectNotesColumn(message?: string | null) {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("column \"notes\" of relation \"projects\" does not exist") ||
+    normalized.includes("could not find the 'notes' column of 'projects' in the schema cache") ||
+    normalized.includes("column projects.notes does not exist")
+  );
+}
+
 export default async function NewProjectPage() {
   async function createProject(prevState: IntakeState, formData: FormData): Promise<IntakeState> {
     "use server";
@@ -85,7 +95,7 @@ export default async function NewProjectPage() {
         .select("id")
         .single();
 
-      if (projectError?.message.includes("column \"notes\" of relation \"projects\" does not exist")) {
+      if (isMissingProjectNotesColumn(projectError?.message)) {
         const fallbackInsert = await supabase
           .from("projects")
           .insert({

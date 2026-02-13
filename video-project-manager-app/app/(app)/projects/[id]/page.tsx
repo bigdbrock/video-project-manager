@@ -114,6 +114,16 @@ type EditorRow = {
   full_name: string | null;
 };
 
+function isMissingProjectNotesColumn(message?: string | null) {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("column \"notes\" of relation \"projects\" does not exist") ||
+    normalized.includes("could not find the 'notes' column of 'projects' in the schema cache") ||
+    normalized.includes("column projects.notes does not exist")
+  );
+}
+
 function formatDueDate(value: string | null) {
   if (!value) return "No due date";
   const date = new Date(value);
@@ -138,7 +148,7 @@ async function getProjectData(id: string) {
       .eq("id", id)
       .maybeSingle();
 
-    if (error?.message.includes("column projects.needs_info does not exist") || error?.message.includes("column projects.notes does not exist")) {
+    if (error?.message.includes("column projects.needs_info does not exist") || isMissingProjectNotesColumn(error?.message)) {
       const fallbackProject = await supabase
         .from("projects")
         .select(
@@ -299,7 +309,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         .maybeSingle();
 
       let supportsNotes = true;
-      if (projectLookupError?.message.includes("column projects.notes does not exist")) {
+      if (isMissingProjectNotesColumn(projectLookupError?.message)) {
         supportsNotes = false;
         const fallbackLookup = await supabaseAction
           .from("projects")

@@ -9,7 +9,6 @@ const navItems = [
   { href: "/projects", label: "Projects", roles: ["admin", "qc"] },
   { href: "/projects/new", label: "Create Project", roles: ["admin", "qc"] },
   { href: "/my-queue", label: "My Queue", roles: ["editor"] },
-  { href: "/dashboards/overdue", label: "Overdue", roles: ["admin", "qc"] },
 ];
 
 type SidebarProps = {

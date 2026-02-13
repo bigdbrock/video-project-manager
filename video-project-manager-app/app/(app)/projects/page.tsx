@@ -117,7 +117,34 @@ async function getProjects(filters: SearchParams) {
       query = query.lte("due_at", dueRange.to);
     }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+
+    if (error?.message.includes("column projects.needs_info does not exist")) {
+      let fallbackQuery = supabase
+        .from("projects")
+        .select("id,title,status,due_at,assigned_editor_id,priority")
+        .order("due_at", { ascending: true, nullsFirst: false });
+
+      if (filters.editor) {
+        fallbackQuery = fallbackQuery.eq("assigned_editor_id", filters.editor);
+      }
+      if (filters.priority) {
+        fallbackQuery = fallbackQuery.eq("priority", filters.priority);
+      }
+
+      const dueRange = getDueRangeFilter(filters.due);
+      if (dueRange?.from) {
+        fallbackQuery = fallbackQuery.gte("due_at", dueRange.from);
+      }
+      if (dueRange?.to) {
+        fallbackQuery = fallbackQuery.lte("due_at", dueRange.to);
+      }
+
+      const fallbackResult = await fallbackQuery;
+      data = (fallbackResult.data ?? []).map((row) => ({ ...row, needs_info: false })) as ProjectRow[];
+      error = fallbackResult.error;
+    }
+
     if (error) {
       return { data: null, error: error.message };
     }

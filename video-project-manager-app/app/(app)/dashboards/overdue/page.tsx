@@ -40,11 +40,21 @@ function average(numbers: number[]) {
 async function getDashboardData() {
   try {
     const supabase = await createServerSupabaseClient();
-    const [{ data: projects, error: projectsError }, { data: editors }, { data: activity }] = await Promise.all([
-      supabase
+    let { data: projects, error: projectsError } = await supabase
+      .from("projects")
+      .select("id,title,due_at,assigned_editor_id,status,revision_count,needs_info")
+      .order("due_at", { ascending: true, nullsFirst: false });
+
+    if (projectsError?.message.includes("column projects.needs_info does not exist")) {
+      const fallbackProjects = await supabase
         .from("projects")
-        .select("id,title,due_at,assigned_editor_id,status,revision_count,needs_info")
-        .order("due_at", { ascending: true, nullsFirst: false }),
+        .select("id,title,due_at,assigned_editor_id,status,revision_count")
+        .order("due_at", { ascending: true, nullsFirst: false });
+      projects = (fallbackProjects.data ?? []).map((row) => ({ ...row, needs_info: false })) as ProjectRow[];
+      projectsError = fallbackProjects.error;
+    }
+
+    const [{ data: editors }, { data: activity }] = await Promise.all([
       supabase.from("profiles").select("id,full_name").eq("role", "editor").order("full_name"),
       supabase
         .from("activity_log")

@@ -128,13 +128,27 @@ function formatDateTime(value: string) {
 async function getProjectData(id: string) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: project, error } = await supabase
+    let { data: project, error } = await supabase
       .from("projects")
       .select(
         "id,title,status,address,type,priority,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by,needs_info,needs_info_note"
       )
       .eq("id", id)
       .maybeSingle();
+
+    if (error?.message.includes("column projects.needs_info does not exist")) {
+      const fallbackProject = await supabase
+        .from("projects")
+        .select(
+          "id,title,status,address,type,priority,due_at,assigned_editor_id,raw_footage_url,brand_assets_url,music_assets_url,preview_url,final_delivery_url,created_by"
+        )
+        .eq("id", id)
+        .maybeSingle();
+      project = fallbackProject.data
+        ? ({ ...fallbackProject.data, needs_info: false, needs_info_note: null } as ProjectRow)
+        : null;
+      error = fallbackProject.error;
+    }
 
     if (error) {
       return { data: null, error: error.message };

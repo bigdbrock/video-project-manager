@@ -79,7 +79,7 @@ export function Sidebar({ role, userName, currentUserId }: SidebarProps) {
   }, [currentUserId]);
 
   return (
-    <aside className="flex h-full w-64 flex-col gap-8 border-r border-white/60 bg-white/70 px-6 py-8">
+    <aside className="flex min-h-screen w-64 flex-col gap-8 border-r border-white/60 bg-white/70 px-6 py-8">
       <div>
         <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Dream Home Shots</p>
         <p className="mt-2 text-sm text-ink-500">Video Project Manager</p>

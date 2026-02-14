@@ -98,17 +98,8 @@ export function ProjectIntakeForm({ action, initialState }: IntakeFormProps) {
       </div>
 
       <div className="glass-panel rounded-xl p-6 shadow-card">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-ink-300">Deliverables</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-ink-300">Project context</h3>
         <div className="mt-4 grid gap-4">
-          <label className="flex flex-col gap-2 text-sm text-ink-500">
-            Deliverable list
-            <textarea
-              name="deliverables"
-              required
-              className="min-h-[140px] rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-ink-900"
-              placeholder="Main video, social cut, teaser"
-            />
-          </label>
           <label className="flex flex-col gap-2 text-sm text-ink-500">
             Notes
             <textarea
@@ -139,7 +130,7 @@ export function ProjectIntakeForm({ action, initialState }: IntakeFormProps) {
       <div className="glass-panel rounded-xl p-6 shadow-card lg:col-span-2">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-ink-500">
-            This will create the project, client (if new), deliverables, and an activity log entry.
+            This will create the project, client (if new), and an activity log entry.
           </p>
           <div className="flex items-center gap-4">
             {state.status !== "idle" ? (

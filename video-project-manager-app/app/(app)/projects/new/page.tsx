@@ -3,14 +3,6 @@ import { ProjectIntakeForm, type IntakeState } from "./ProjectIntakeForm";
 
 const initialState: IntakeState = { status: "idle" };
 
-function parseDeliverables(raw: string) {
-  return raw
-    .split(/\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((label) => ({ label }));
-}
-
 function isMissingProjectNotesColumn(message?: string | null) {
   if (!message) return false;
   const normalized = message.toLowerCase();
@@ -45,15 +37,9 @@ export default async function NewProjectPage() {
       const musicAssetsUrl = String(formData.get("music_assets_url") || "").trim();
       const priority = String(formData.get("priority") || "normal");
       const notes = String(formData.get("notes") || "").trim();
-      const deliverablesRaw = String(formData.get("deliverables") || "").trim();
 
       if (!title || !clientName || !type || !dueAt || !rawFootageUrl) {
         return { status: "error", message: "Please fill out all required fields." };
-      }
-
-      const deliverables = parseDeliverables(deliverablesRaw);
-      if (!deliverables.length) {
-        return { status: "error", message: "Add at least one deliverable." };
       }
 
       const { data: existingClient } = await supabase
@@ -117,15 +103,6 @@ export default async function NewProjectPage() {
         }
 
         const projectId = fallbackInsert.data.id;
-        const deliverableRows = deliverables.map((item) => ({
-          project_id: projectId,
-          label: item.label,
-        }));
-
-        const { error: deliverableError } = await supabase.from("deliverables").insert(deliverableRows);
-        if (deliverableError) {
-          return { status: "error", message: deliverableError.message };
-        }
 
         if (notes) {
           await supabase.from("activity_log").insert({
@@ -141,16 +118,6 @@ export default async function NewProjectPage() {
 
       if (projectError || !project) {
         return { status: "error", message: projectError?.message ?? "Failed to create project." };
-      }
-
-      const deliverableRows = deliverables.map((item) => ({
-        project_id: project.id,
-        label: item.label,
-      }));
-
-      const { error: deliverableError } = await supabase.from("deliverables").insert(deliverableRows);
-      if (deliverableError) {
-        return { status: "error", message: deliverableError.message };
       }
 
       if (notes) {

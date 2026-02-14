@@ -15,13 +15,6 @@ type ProjectDetails = {
   final_delivery_url: string | null;
 };
 
-type DeliverableItem = {
-  id: string;
-  label: string;
-  specs: string | null;
-  completed: boolean;
-};
-
 export type SaveState = {
   status: "idle" | "saving" | "success" | "error";
   message?: string;
@@ -30,15 +23,13 @@ export type SaveState = {
 type Props = {
   canEdit: boolean;
   project: ProjectDetails;
-  deliverables: DeliverableItem[];
   action: (prevState: SaveState, formData: FormData) => Promise<SaveState>;
 };
 
-export function ProjectDetailsEditor({ canEdit, project, deliverables, action }: Props) {
+export function ProjectDetailsEditor({ canEdit, project, action }: Props) {
   const [state, formAction, isPending] = useActionState(action, { status: "idle" });
   const [isOpen, setIsOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const totalDeliverables = Math.max(1, deliverables.length + 1);
 
   useEffect(() => {
     if (state.status === "success") {
@@ -129,47 +120,6 @@ export function ProjectDetailsEditor({ canEdit, project, deliverables, action }:
             Final delivery URL
             <input name="final_delivery_url" defaultValue={project.final_delivery_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
           </label>
-          <div className="md:col-span-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Deliverables</p>
-            <input type="hidden" name="deliverables_count" value={totalDeliverables} />
-            <div className="mt-2 grid gap-2">
-              {Array.from({ length: totalDeliverables }).map((_, index) => {
-                const item = deliverables[index];
-                return (
-                  <div key={item?.id ?? `new-${index}`} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                    <input type="hidden" name={`deliverable_id_${index}`} value={item?.id ?? ""} />
-                    <label className="flex flex-col gap-1 text-[11px] text-ink-400">
-                      Label
-                      <input
-                        name={`deliverable_label_${index}`}
-                        defaultValue={item?.label ?? ""}
-                        className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-sm text-ink-900"
-                        placeholder={item ? "" : "Add a deliverable"}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1 text-[11px] text-ink-400">
-                      Specs
-                      <input
-                        name={`deliverable_specs_${index}`}
-                        defaultValue={item?.specs ?? ""}
-                        className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2 text-sm text-ink-900"
-                        placeholder={item ? "" : "Optional specs"}
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 text-[11px] text-ink-400">
-                      <input
-                        type="checkbox"
-                        name={`deliverable_completed_${index}`}
-                        defaultChecked={item?.completed ?? false}
-                        className="h-4 w-4 rounded border-ink-900/20 text-ink-900"
-                      />
-                      Complete
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
           <button
             type="submit"
             disabled={isPending}

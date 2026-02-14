@@ -28,11 +28,6 @@ const fallback = {
     needs_info: false,
     needs_info_note: "",
   },
-  deliverables: [
-    { id: "d1", label: "Main video", specs: "1080p, 30fps", completed: false },
-    { id: "d2", label: "Vertical cut", specs: "1080x1920", completed: false },
-    { id: "d3", label: "Social teaser", specs: "15s", completed: true },
-  ],
   messages: [
     {
       id: "m1",
@@ -87,13 +82,6 @@ type ProjectRow = {
   created_by: string | null;
   needs_info: boolean;
   needs_info_note: string | null;
-};
-
-type DeliverableRow = {
-  id: string;
-  label: string;
-  specs: string | null;
-  completed: boolean;
 };
 
 type RevisionRow = {
@@ -170,13 +158,8 @@ async function getProjectData(id: string) {
       return { data: null, error: "not_found" };
     }
 
-    const [{ data: deliverables }, { data: messages }, { data: revisions }, { data: activity }, { data: editors }] =
+    const [{ data: messages }, { data: revisions }, { data: activity }, { data: editors }] =
       await Promise.all([
-        supabase
-          .from("deliverables")
-          .select("id,label,specs,completed")
-          .eq("project_id", id)
-          .order("created_at", { ascending: true }),
         supabase
           .from("project_messages")
           .select("id,sender_id,created_at,message,sender:profiles(full_name)")
@@ -207,7 +190,6 @@ async function getProjectData(id: string) {
     return {
       data: {
         project: project as ProjectRow,
-        deliverables: (deliverables ?? []) as DeliverableRow[],
         messages: normalizedMessages,
         revisions: (revisions ?? []) as RevisionRow[],
         activity: (activity ?? []) as ActivityRow[],
@@ -363,37 +345,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         : baseUpdate;
 
       await supabaseAction.from("projects").update(updatePayload).eq("id", projectId);
-
-      const deliverableCount = Number(formData.get("deliverables_count") || 0);
-      for (let index = 0; index < deliverableCount; index += 1) {
-        const deliverableId = String(formData.get(`deliverable_id_${index}`) || "").trim();
-        const deliverableLabel = String(formData.get(`deliverable_label_${index}`) || "").trim();
-        const deliverableSpecs = String(formData.get(`deliverable_specs_${index}`) || "").trim();
-        const deliverableCompleted = formData.get(`deliverable_completed_${index}`) === "on";
-
-        if (!deliverableLabel) {
-          continue;
-        }
-
-        if (deliverableId) {
-          await supabaseAction
-            .from("deliverables")
-            .update({
-              label: deliverableLabel,
-              specs: deliverableSpecs || null,
-              completed: deliverableCompleted,
-            })
-            .eq("id", deliverableId)
-            .eq("project_id", projectId);
-        } else {
-          await supabaseAction.from("deliverables").insert({
-            project_id: projectId,
-            label: deliverableLabel,
-            specs: deliverableSpecs || null,
-            completed: deliverableCompleted,
-          });
-        }
-      }
 
       await supabaseAction.from("activity_log").insert({
         project_id: projectId,
@@ -654,7 +605,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
           <StatusPill status={data.project.status} />
         </div>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="mt-6">
           <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Links</p>
             <ul className="mt-3 space-y-2 text-sm text-ink-700">
@@ -666,28 +617,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <li>Notes: {data.project.notes ?? "Not set"}</li>
             </ul>
           </div>
-          <div className="rounded-xl border border-ink-900/10 bg-white/70 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink-300">Deliverables</p>
-            <ul className="mt-3 space-y-2 text-sm text-ink-700">
-              {data.deliverables.length ? (
-                data.deliverables.map((item) => (
-                  <li key={item.id}>
-                    {item.label}
-                    {item.specs ? ` (${item.specs})` : ""}
-                    {item.completed ? " · Complete" : ""}
-                  </li>
-                ))
-              ) : (
-                <li>No deliverables yet.</li>
-              )}
-            </ul>
-          </div>
         </div>
 
         <ProjectDetailsEditor
           canEdit={canEditProject}
           project={data.project}
-          deliverables={data.deliverables}
           action={updateProjectDetails}
         />
 

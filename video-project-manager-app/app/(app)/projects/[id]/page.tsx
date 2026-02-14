@@ -581,10 +581,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       }
 
       await supabaseAction.from("projects").delete().eq("id", projectId);
-      redirect("/projects");
     } catch (error) {
       return;
     }
+
+    redirect("/projects");
   }
 
   const data = result.data ?? fallback;

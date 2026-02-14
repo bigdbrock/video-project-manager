@@ -116,6 +116,9 @@ async function getProjects(filters: SearchParams) {
     if (dueRange?.to) {
       query = query.lte("due_at", dueRange.to);
     }
+    if (filters.due === "overdue") {
+      query = query.not("status", "in", "(DELIVERED,ARCHIVED)");
+    }
 
     let { data, error } = await query;
 
@@ -138,6 +141,9 @@ async function getProjects(filters: SearchParams) {
       }
       if (dueRange?.to) {
         fallbackQuery = fallbackQuery.lte("due_at", dueRange.to);
+      }
+      if (filters.due === "overdue") {
+        fallbackQuery = fallbackQuery.not("status", "in", "(DELIVERED,ARCHIVED)");
       }
 
       const fallbackResult = await fallbackQuery;

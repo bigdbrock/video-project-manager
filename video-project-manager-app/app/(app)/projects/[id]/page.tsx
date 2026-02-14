@@ -584,6 +584,43 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     redirect("/projects");
   }
 
+  async function archiveProject() {
+    "use server";
+
+    try {
+      const supabaseAction = await createServerSupabaseClient();
+      const {
+        data: { user: actionUser },
+      } = await supabaseAction.auth.getUser();
+
+      if (!actionUser) {
+        return;
+      }
+
+      const { data: actionProfile } = await supabaseAction
+        .from("profiles")
+        .select("role")
+        .eq("id", actionUser.id)
+        .maybeSingle();
+
+      if (actionProfile?.role !== "admin") {
+        return;
+      }
+
+      await supabaseAction.from("projects").update({ status: "ARCHIVED" }).eq("id", projectId);
+      await supabaseAction.from("activity_log").insert({
+        project_id: projectId,
+        actor_id: actionUser.id,
+        action: "PROJECT_UPDATED",
+        meta: { status: "ARCHIVED" },
+      });
+      revalidatePath(`/projects/${projectId}`);
+      revalidatePath("/projects");
+    } catch (error) {
+      return;
+    }
+  }
+
   const data = result.data ?? fallback;
   const canEditProject = role === "admin" || data.project.created_by === user?.id;
 
@@ -731,12 +768,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </button>
             </form>
             {role === "admin" ? (
-              <form action={deleteProject} className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
-                <span>Delete this project permanently.</span>
-                <button type="submit" className="rounded-full bg-rose-600 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
-                  Delete
-                </button>
-              </form>
+              <div className="mt-4 space-y-3">
+                <form action={archiveProject} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                  <span>Set this project status to archived.</span>
+                  <button type="submit" className="rounded-full bg-amber-600 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                    Archive
+                  </button>
+                </form>
+                <form action={deleteProject} className="flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                  <span>Delete this project permanently.</span>
+                  <button type="submit" className="rounded-full bg-rose-600 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                    Delete
+                  </button>
+                </form>
+              </div>
             ) : null}
           </div>
         ) : null}

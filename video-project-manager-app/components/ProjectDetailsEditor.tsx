@@ -33,6 +33,7 @@ export function ProjectDetailsEditor({ canEdit, project, action }: Props) {
 
   useEffect(() => {
     if (state.status === "success") {
+      setIsOpen(false);
       setShowToast(true);
       const timer = window.setTimeout(() => setShowToast(false), 2200);
       return () => window.clearTimeout(timer);

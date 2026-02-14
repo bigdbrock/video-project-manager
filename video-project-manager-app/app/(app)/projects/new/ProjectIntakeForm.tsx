@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
 export type IntakeState = {
@@ -27,7 +28,14 @@ function SubmitButton() {
 }
 
 export function ProjectIntakeForm({ action, initialState }: IntakeFormProps) {
+  const router = useRouter();
   const [state, formAction] = useActionState(action, initialState);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      router.push("/projects");
+    }
+  }, [router, state.status]);
 
   return (
     <form action={formAction} className="grid gap-6 lg:grid-cols-2">

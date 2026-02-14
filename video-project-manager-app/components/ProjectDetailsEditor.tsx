@@ -113,10 +113,6 @@ export function ProjectDetailsEditor({ canEdit, project, action }: Props) {
             <input name="music_assets_url" defaultValue={project.music_assets_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
           </label>
           <label className="flex flex-col gap-2 text-xs text-ink-500">
-            Preview URL
-            <input name="preview_url" defaultValue={project.preview_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-2 text-xs text-ink-500">
             Final delivery URL
             <input name="final_delivery_url" defaultValue={project.final_delivery_url ?? ""} className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2" />
           </label>

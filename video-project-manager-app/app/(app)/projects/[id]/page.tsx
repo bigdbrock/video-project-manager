@@ -325,7 +325,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       const rawFootageUrl = String(formData.get("raw_footage_url") || "").trim();
       const brandAssetsUrl = String(formData.get("brand_assets_url") || "").trim();
       const musicAssetsUrl = String(formData.get("music_assets_url") || "").trim();
-      const previewUrl = String(formData.get("preview_url") || "").trim();
       const finalDeliveryUrl = String(formData.get("final_delivery_url") || "").trim();
 
       const baseUpdate = {
@@ -336,7 +335,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         raw_footage_url: rawFootageUrl || project.raw_footage_url,
         brand_assets_url: brandAssetsUrl || null,
         music_assets_url: musicAssetsUrl || null,
-        preview_url: previewUrl || null,
         final_delivery_url: finalDeliveryUrl || null,
       };
 
@@ -365,7 +363,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     "use server";
 
     const status = String(formData.get("status") || "").trim();
-    const previewUrl = String(formData.get("preview_url") || "").trim();
     const finalUrl = String(formData.get("final_delivery_url") || "").trim();
 
     try {
@@ -385,7 +382,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         .maybeSingle();
 
       const update: Record<string, string | null> = {
-        preview_url: previewUrl || null,
         final_delivery_url: finalUrl || null,
       };
 
@@ -613,7 +609,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <li>Raw footage: {data.project.raw_footage_url ?? "Not set"}</li>
               <li>Brand assets: {data.project.brand_assets_url ?? "Not set"}</li>
               <li>Music: {data.project.music_assets_url ?? "Not set"}</li>
-              <li>Preview: {data.project.preview_url ?? "Not set"}</li>
               <li>Final: {data.project.final_delivery_url ?? "Not set"}</li>
               <li>Notes: {data.project.notes ?? "Not set"}</li>
             </ul>
@@ -758,15 +753,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <option value="QC">QC</option>
                   <option value="REVISION_REQUESTED">REVISION_REQUESTED</option>
                 </select>
-              </label>
-              <label className="flex flex-col gap-2 text-xs text-ink-500">
-                Preview URL
-                <input
-                  name="preview_url"
-                  defaultValue={data.project.preview_url ?? ""}
-                  className="rounded-lg border border-ink-900/10 bg-white/80 px-3 py-2"
-                  placeholder="https://frame.io/..."
-                />
               </label>
               <label className="flex flex-col gap-2 text-xs text-ink-500">
                 Final delivery URL

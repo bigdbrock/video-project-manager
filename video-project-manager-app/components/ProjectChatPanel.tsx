@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isUnread, setLastSeenAt as persistLastSeenAt } from "@/lib/messageRead";
 
 export type ChatMessage = {
   id: string;
@@ -9,6 +10,14 @@ export type ChatMessage = {
   sender_name?: string | null;
   created_at: string;
   message: string;
+};
+
+type MessageQueryRow = {
+  id: string;
+  sender_id: string | null;
+  created_at: string;
+  message: string;
+  sender: { full_name: string | null } | null;
 };
 
 type ChatPanelProps = {
@@ -40,57 +49,44 @@ function formatTime(value: string) {
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function getLastSeenKey(projectId: string) {
-  return `vpm:lastSeen:${projectId}`;
-}
-
 export function ProjectChatPanel({ projectId, initialMessages, onSend, currentUserId }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [error, setError] = useState<string | null>(null);
-  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setMessages(initialMessages);
-    const stored = sessionStorage.getItem(getLastSeenKey(projectId));
-    setLastSeenAt(stored);
-  }, [projectId, initialMessages]);
-
-  useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
+    const supabase = createClient();
 
-    try {
-      const supabase = createClient();
+    const fetchMessages = async () => {
+      const { data, error: fetchError } = await supabase
+        .from("project_messages")
+        .select("id,sender_id,created_at,message,sender:profiles(full_name)")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true })
+        .limit(50);
 
-      const fetchMessages = async () => {
-        const { data, error: fetchError } = await supabase
-          .from("project_messages")
-          .select("id,sender_id,created_at,message,sender:profiles(full_name)")
-          .eq("project_id", projectId)
-          .order("created_at", { ascending: true })
-          .limit(50);
+      if (fetchError) {
+        setError(fetchError.message);
+        return;
+      }
 
-        if (fetchError) {
-          setError(fetchError.message);
-          return;
-        }
+      const normalized = (data ?? []).map((item) => {
+        const row = item as MessageQueryRow;
+        return {
+          id: row.id,
+          sender_id: row.sender_id,
+          sender_name: row.sender?.full_name ?? null,
+          created_at: row.created_at,
+          message: row.message,
+        };
+      });
+      setMessages(normalized);
+      setError(null);
+    };
 
-        const normalized = (data ?? []).map((item: any) => ({
-          id: item.id,
-          sender_id: item.sender_id,
-          sender_name: item.sender?.full_name ?? null,
-          created_at: item.created_at,
-          message: item.message,
-        })) as ChatMessage[];
-        setMessages(normalized);
-        setError(null);
-      };
-
-      fetchMessages();
-      interval = setInterval(fetchMessages, 8000);
-    } catch (err) {
-      setError("Supabase not configured");
-    }
+    fetchMessages();
+    interval = setInterval(fetchMessages, 8000);
 
     return () => {
       if (interval) {
@@ -100,26 +96,24 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend, currentUs
   }, [projectId]);
 
   const lastMessage = useMemo(() => messages[messages.length - 1], [messages]);
-  const unreadCount = useMemo(() => {
-    if (!lastSeenAt) return 0;
-    const lastSeenTime = new Date(lastSeenAt).getTime();
-    return messages.filter((message) => new Date(message.created_at).getTime() > lastSeenTime).length;
-  }, [messages, lastSeenAt]);
+  const unreadCount = currentUserId
+    ? messages.filter((message) => message.sender_id !== currentUserId && isUnread(currentUserId, projectId, message.created_at)).length
+    : 0;
 
   const handleJumpToLatest = () => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-    if (lastMessage) {
-      sessionStorage.setItem(getLastSeenKey(projectId), lastMessage.created_at);
-      setLastSeenAt(lastMessage.created_at);
+    if (currentUserId && lastMessage) {
+      persistLastSeenAt(currentUserId, projectId, lastMessage.created_at);
+      setMessages((current) => current.slice());
     }
   };
 
   const handleMarkRead = () => {
-    if (lastMessage) {
-      sessionStorage.setItem(getLastSeenKey(projectId), lastMessage.created_at);
-      setLastSeenAt(lastMessage.created_at);
+    if (currentUserId && lastMessage) {
+      persistLastSeenAt(currentUserId, projectId, lastMessage.created_at);
+      setMessages((current) => current.slice());
     }
   };
 

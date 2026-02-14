@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell flex">
-      <Sidebar role={role} userName={userName} />
+      <Sidebar role={role} userName={userName} currentUserId={user.id} />
       <div className="flex min-h-screen flex-1 flex-col">
         <TopBar role={role} userName={userName} />
         <main className="flex-1 px-8 py-10">

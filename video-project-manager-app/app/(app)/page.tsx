@@ -24,6 +24,18 @@ function formatDueDate(value: string | null) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function toDateOnly(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeDateOnly(value: string | null) {
+  if (!value) return null;
+  return value.length >= 10 ? value.slice(0, 10) : value;
+}
+
 function average(numbers: number[]) {
   if (!numbers.length) return null;
   const total = numbers.reduce((sum, value) => sum + value, 0);
@@ -50,18 +62,19 @@ async function getOverviewMetrics() {
     }
 
     const rows = (data ?? []) as OverviewProjectRow[];
+    const todayDate = toDateOnly(new Date());
     const overdueProjects = rows
       .filter(
         (project) =>
           !project.needs_info &&
-          project.due_at &&
+          normalizeDateOnly(project.due_at) &&
           !["DELIVERED", "ARCHIVED"].includes(project.status) &&
-          new Date(project.due_at).getTime() < Date.now()
+          (normalizeDateOnly(project.due_at) ?? "") < todayDate
       )
       .sort((a, b) => {
-        const left = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
-        const right = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
-        return left - right;
+        const left = normalizeDateOnly(a.due_at) ?? "9999-12-31";
+        const right = normalizeDateOnly(b.due_at) ?? "9999-12-31";
+        return left.localeCompare(right);
       });
 
     const avgRevisions =

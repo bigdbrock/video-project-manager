@@ -70,6 +70,19 @@ function formatDueDate(value: string | null) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function toDateOnly(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+type DueRange = {
+  from: string | null;
+  to: string | null;
+  before: string | null;
+};
+
 function getDueRangeFilter(due: string | undefined) {
   const today = new Date();
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -77,17 +90,17 @@ function getDueRangeFilter(due: string | undefined) {
   if (due === "3d") {
     const limit = new Date(startOfDay);
     limit.setDate(limit.getDate() + 3);
-    return { from: startOfDay.toISOString(), to: limit.toISOString() };
+    return { from: toDateOnly(startOfDay), to: toDateOnly(limit), before: null } satisfies DueRange;
   }
 
   if (due === "7d") {
     const limit = new Date(startOfDay);
     limit.setDate(limit.getDate() + 7);
-    return { from: startOfDay.toISOString(), to: limit.toISOString() };
+    return { from: toDateOnly(startOfDay), to: toDateOnly(limit), before: null } satisfies DueRange;
   }
 
   if (due === "overdue") {
-    return { to: startOfDay.toISOString() };
+    return { from: null, to: null, before: toDateOnly(startOfDay) } satisfies DueRange;
   }
 
   return null;
@@ -116,6 +129,9 @@ async function getProjects(filters: SearchParams) {
     if (dueRange?.to) {
       query = query.lte("due_at", dueRange.to);
     }
+    if (dueRange?.before) {
+      query = query.lt("due_at", dueRange.before);
+    }
     if (filters.due === "overdue") {
       query = query.not("status", "in", "(DELIVERED,ARCHIVED)");
     }
@@ -141,6 +157,9 @@ async function getProjects(filters: SearchParams) {
       }
       if (dueRange?.to) {
         fallbackQuery = fallbackQuery.lte("due_at", dueRange.to);
+      }
+      if (dueRange?.before) {
+        fallbackQuery = fallbackQuery.lt("due_at", dueRange.before);
       }
       if (filters.due === "overdue") {
         fallbackQuery = fallbackQuery.not("status", "in", "(DELIVERED,ARCHIVED)");

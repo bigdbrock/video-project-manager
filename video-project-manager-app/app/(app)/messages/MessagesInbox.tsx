@@ -15,6 +15,16 @@ type InboxMessageRow = {
   sender: { full_name: string | null } | null;
 };
 
+type InboxMessageQueryRow = {
+  id: string;
+  project_id: string;
+  sender_id: string | null;
+  created_at: string;
+  message: string;
+  project: { id: string; title: string } | { id: string; title: string }[] | null;
+  sender: { full_name: string | null } | { full_name: string | null }[] | null;
+};
+
 type ProjectPreview = {
   projectId: string;
   projectTitle: string;
@@ -53,7 +63,16 @@ export default function MessagesInbox({ currentUserId }: { currentUserId: string
           return;
         }
 
-        setRows((data ?? []) as InboxMessageRow[]);
+        const normalized = ((data ?? []) as InboxMessageQueryRow[]).map((row) => ({
+          id: row.id,
+          project_id: row.project_id,
+          sender_id: row.sender_id,
+          created_at: row.created_at,
+          message: row.message,
+          project: Array.isArray(row.project) ? (row.project[0] ?? null) : row.project,
+          sender: Array.isArray(row.sender) ? (row.sender[0] ?? null) : row.sender,
+        }));
+        setRows(normalized);
         setError(null);
       } catch {
         if (mounted) {

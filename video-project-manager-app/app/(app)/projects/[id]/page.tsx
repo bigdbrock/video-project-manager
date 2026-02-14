@@ -1,5 +1,6 @@
 ﻿import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { ProjectDetailsEditor } from "@/components/ProjectDetailsEditor";
 import type { SaveState } from "@/components/ProjectDetailsEditor";
 import { StatusPill } from "@/components/StatusPill";
@@ -627,6 +628,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <section className="glass-panel rounded-xl p-6 shadow-card">
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-2 rounded-full border border-ink-900/10 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-ink-700 hover:border-ink-900/20 hover:text-ink-900"
+        >
+          <span aria-hidden="true">&larr;</span>
+          Back to Projects
+        </Link>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-ink-300">Project</p>

@@ -8,6 +8,7 @@ const navItems = [
   { href: "/", label: "Overview", roles: ["admin", "qc", "editor"] },
   { href: "/projects", label: "Projects", roles: ["admin", "qc"] },
   { href: "/projects/new", label: "Create Project", roles: ["admin", "qc"] },
+  { href: "/settings", label: "Settings", roles: ["admin", "qc", "editor"] },
   { href: "/my-queue", label: "My Queue", roles: ["editor"] },
 ];
 

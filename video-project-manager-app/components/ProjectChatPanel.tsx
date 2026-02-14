@@ -17,7 +17,7 @@ type MessageQueryRow = {
   sender_id: string | null;
   created_at: string;
   message: string;
-  sender: { full_name: string | null } | null;
+  sender: { full_name: string | null } | { full_name: string | null }[] | null;
 };
 
 type ChatPanelProps = {
@@ -73,10 +73,11 @@ export function ProjectChatPanel({ projectId, initialMessages, onSend, currentUs
 
       const normalized = (data ?? []).map((item) => {
         const row = item as MessageQueryRow;
+        const sender = Array.isArray(row.sender) ? (row.sender[0] ?? null) : row.sender;
         return {
           id: row.id,
           sender_id: row.sender_id,
-          sender_name: row.sender?.full_name ?? null,
+          sender_name: sender?.full_name ?? null,
           created_at: row.created_at,
           message: row.message,
         };
